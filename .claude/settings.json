@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/en/translation/upstream_reminder.sh\"",
+            "timeout": 20,
+            "statusMessage": "Checking upstream oil-ui for new commits"
+          }
+        ]
+      }
+    ]
+  }
+}

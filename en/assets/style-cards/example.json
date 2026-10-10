@@ -1,0 +1,47 @@
+{
+  "project": "Mud Pottery Studio",
+  "lang": "en",
+  "round": "Style cards",
+  "brief": "Class booking site for a pottery studio: the same content, comparing colors, typography, controls, and layout feel",
+  "content": {
+    "title": "Come make your own bowl this weekend.",
+    "body": "A two-hour wheel-throwing session with clay, glaze, and firing included. Pick up your piece four weeks later.",
+    "number": "$48",
+    "number_label": "Single session · firing included",
+    "primary": "Book a session",
+    "secondary": "See student work",
+    "tags": ["Spots this week", "Saturday: 2 left"],
+    "input_label": "Date",
+    "input_value": "Sat, Oct 12"
+  },
+  "cards": [
+    {
+      "id": "glaze", "name": "Glaze and hand", "concept": "Bring the glaze colors onto the page: celadon gray as the accent, the beige of raw stoneware as the ground.",
+      "traits": ["Beige clay ground", "Celadon accent", "Rounded buttons"],
+      "colors": {"bg": "#EFE7DA", "surface": "#F8F3EA", "text": "#3B302A", "muted": "#7D7065", "accent": "#5E7F7A", "accent_text": "#FFFFFF", "line": "#DED3C2", "warn": "#B4643C"},
+      "fonts": {"display": "Georgia, serif", "body": "\"Helvetica Neue\", sans-serif", "number": "Georgia, serif"},
+      "display_weight": 500, "radius": 14, "border": "none", "shadow": "soft", "density": "airy", "layout": "hero-split", "texture": "paper"
+    },
+    {
+      "id": "gallery", "name": "White porcelain gallery", "concept": "Like a museum label: wide white space, the photograph of the work as the lead, text stepping aside.",
+      "traits": ["Cool white ground", "Hairline square corners", "Work centered"],
+      "colors": {"bg": "#F7F7F5", "surface": "#FFFFFF", "text": "#1E1E1C", "muted": "#74746F", "accent": "#1E1E1C", "accent_text": "#FFFFFF", "line": "#E2E2DE", "warn": "#9A5B2E"},
+      "fonts": {"display": "\"Helvetica Neue\", sans-serif", "body": "\"Helvetica Neue\", sans-serif", "number": "\"Helvetica Neue\", sans-serif"},
+      "display_weight": 400, "radius": 0, "border": "hairline", "shadow": "none", "density": "regular", "layout": "hero-center"
+    },
+    {
+      "id": "kiln", "name": "Kiln night class", "concept": "The kiln room after dark: deep charcoal holds the whole screen, kiln-fire orange only on what matters.",
+      "traits": ["Full-bleed charcoal", "Kiln-fire orange", "Bold headings"],
+      "colors": {"bg": "#2A2522", "surface": "#36302C", "text": "#F3E9DF", "muted": "#B5A69A", "accent": "#E0793A", "accent_text": "#1F1A17", "line": "#4A423C", "warn": "#E7B65A"},
+      "fonts": {"display": "\"Helvetica Neue\", sans-serif", "body": "\"Helvetica Neue\", sans-serif", "number": "\"Avenir Next\", sans-serif"},
+      "display_weight": 700, "radius": 6, "border": "solid", "shadow": "none", "density": "regular", "layout": "fullbleed"
+    },
+    {
+      "id": "zine", "name": "Handmade zine", "concept": "Like the zine the studio prints itself: big headlines, text set in columns, red used only to circle what matters.",
+      "traits": ["Newsprint gray-white", "Big type in columns", "Vermilion circling"],
+      "colors": {"bg": "#F1EFEA", "surface": "#FAF9F5", "text": "#22201D", "muted": "#6B6760", "accent": "#C23B2A", "accent_text": "#FFFFFF", "line": "#D8D4CB", "warn": "#8A6A12"},
+      "fonts": {"display": "Georgia, serif", "body": "Georgia, serif", "number": "Menlo, monospace"},
+      "display_weight": 900, "radius": 2, "border": "solid", "shadow": "none", "density": "compact", "layout": "editorial"
+    }
+  ]
+}
