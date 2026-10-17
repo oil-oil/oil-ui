@@ -15,6 +15,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from urllib.parse import quote
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -527,17 +528,18 @@ console.log(JSON.stringify(result));
 
     def test_local_assets_outside_manifest_are_embedded_and_protected(self):
         with tempfile.TemporaryDirectory() as outside_dir:
-            assets = Path(outside_dir).resolve()
+            assets = Path(outside_dir).resolve() / "素材 #100%"
+            assets.mkdir()
             (assets / "font.ttf").write_bytes(b"local-font")
             (assets / "image.png").write_bytes(b"local-image")
             (assets / "app.js").write_text("window.loaded=true", encoding="utf-8")
             (assets / "app.css").write_text('@font-face{font-family:test;src:url(font.ttf)}', encoding="utf-8")
             # Exercise ../ traversal as well as absolute references; no file copying is needed.
-            relative = os.path.relpath(assets / "app.css", self.folder.resolve())
+            relative = quote(Path(os.path.relpath(assets / "app.css", self.folder.resolve())).as_posix())
             self.source.write_text(f'<html><head><link rel="stylesheet" href="{relative}"></head>'
-                                   f'<body style="background:url({assets / "image.png"})">'
+                                   f'<body style="background:url({(assets / "image.png").as_uri()})">'
                                    f'<img src="{(assets / "image.png").as_uri()}">'
-                                   f'<script defer src="{assets / "app.js"}"></script></body></html>', encoding="utf-8")
+                                   f'<script defer src="{(assets / "app.js").as_uri()}"></script></body></html>', encoding="utf-8")
             self.data["candidates"][0]["interactive"] = True
             self.save()
             first = builder.build(self.manifest, self.output)
@@ -565,6 +567,18 @@ console.log(JSON.stringify(result));
             self.assertIn("外部候选", self.payload(self.output.read_text(encoding="utf-8"))["candidates"][0]["content"])
             with self.assertRaisesRegex(ValueError, "输出不能覆盖输入"):
                 builder.build(self.manifest, source, force=True)
+
+    @unittest.skipUnless(sys.platform == "win32", "Windows drive paths")
+    def test_native_windows_resource_paths_accept_slashes_and_reserved_characters(self):
+        image = self.folder / "素材 #100%.png"
+        image.write_bytes(b"image")
+        for ref in (str(image), image.as_posix(), image.as_uri()):
+            with self.subTest(ref=ref):
+                self.source.write_text(f'<img src="{ref}">', encoding="utf-8")
+                builder.build(self.manifest, self.output, force=True)
+                content = self.payload(self.output.read_text(encoding="utf-8"))["candidates"][0]["content"]
+                self.assertIn("data:image/png;base64,aW1hZ2U=", content)
+                self.assertNotIn("#100", content)
 
     def test_source_filesystem_paths_and_text_newlines_keep_existing_behavior(self):
         source = self.folder / "candidate #1%20.html"
@@ -754,7 +768,7 @@ console.log(JSON.stringify(result));
         image = self.folder / "image.png"
         image.write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7ioAAAAASUVORK5CYII='))
         font = ROOT / "assets/fonts/instrument-serif/InstrumentSerif-Regular.ttf"
-        self.source.write_text(f'''<style>@font-face{{font-family:Test;src:url("{font}")}}
+        self.source.write_text(f'''<style>@font-face{{font-family:Test;src:url("{font.as_uri()}")}}
           p{{font-family:Test}}</style><p>Offline font</p><img src="image.png">
           <script>window.addEventListener('load',async()=>{{await document.fonts.load('16px Test');await document.fonts.ready;
             parent.postMessage({{probe:'offline-assets',image:document.querySelector('img').naturalWidth,

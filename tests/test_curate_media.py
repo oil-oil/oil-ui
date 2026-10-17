@@ -10,9 +10,11 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 import zlib
 import struct
 
@@ -77,7 +79,8 @@ class CurateMediaTests(unittest.TestCase):
         cls.video_temp.cleanup()
 
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix='oil-curate-test-')
+        # URL metacharacters expose missing path-to-URL conversion on every OS.
+        self.temp = tempfile.TemporaryDirectory(prefix='oil-curate-test-中文 #%-')
         self.addCleanup(self.temp.cleanup)
         self.cwd = Path(self.temp.name)
         self.shim = self.cwd / 'fixture.mjs'
@@ -124,11 +127,14 @@ globalThis.fetch = async (input, init) => {
 };
 ''', encoding='utf-8')
 
-    def run_cli(self, *args, fixture=False, ok=True):
+    def cli_command(self, *args, fixture=False):
         cmd = [NODE]
         if fixture:
-            cmd += ['--import', str(self.shim)]
-        result = subprocess.run(cmd + [str(SCRIPT), *args], cwd=self.cwd, capture_output=True, text=True, timeout=40, encoding='utf-8')
+            cmd += ['--import', self.shim.as_uri()]
+        return cmd + [str(SCRIPT), *args]
+
+    def run_cli(self, *args, fixture=False, ok=True):
+        result = subprocess.run(self.cli_command(*args, fixture=fixture), cwd=self.cwd, capture_output=True, text=True, timeout=40, encoding='utf-8')
         if ok:
             self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         else:
@@ -163,7 +169,7 @@ globalThis.fetch = async (input, init) => {
         self.run_cli('search', 'wood', '--kind', 'design', fixture=True)
         b = json.loads(self.run_cli('search', 'wood', '--kind', 'texture', fixture=True).stdout)['items'][0]
         self.assertEqual(a['ref'], b['ref'])
-        self.assertIn('V1', json.loads((self.cwd / '.curate-cache.json').read_text())['items'])
+        self.assertIn('V1', json.loads((self.cwd / '.curate-cache.json').read_text(encoding='utf-8'))['items'])
 
     @unittest.skipUnless(FFMPEG and FFPROBE, 'ffmpeg/ffprobe required for full decode')
     def test_batch_fetch_maps_integrity_sheet_credits_and_no_overwrite(self):
@@ -174,7 +180,7 @@ globalThis.fetch = async (input, init) => {
         self.assertTrue(all((i['width'], i['height'], i['integrity']) == (8, 6, 'full-decode') for i in result['files']))
         self.assertEqual(result['files'][0]['originalWidth'], 8)
         self.assertTrue((self.cwd / 'assets/sheet.html').exists())
-        log = (self.cwd / 'assets/SOURCES.md').read_text()
+        log = (self.cwd / 'assets/SOURCES.md').read_text(encoding='utf-8')
         self.assertIn('License:', log)
         self.assertIn('Powered by Poly Haven', log)
         self.assertIn('Victoria and Albert Museum', log)
@@ -187,7 +193,7 @@ globalThis.fetch = async (input, init) => {
         result = json.loads(self.run_cli('fetch', self.base + '/image', self.base + '/bad', '--dir', 'assets', ok=False).stdout)
         self.assertEqual(result['count'], 1)
         self.assertEqual(len(result['errors']), 1)
-        self.assertIn('Rights not verified', (self.cwd / 'assets/SOURCES.md').read_text())
+        self.assertIn('Rights not verified', (self.cwd / 'assets/SOURCES.md').read_text(encoding='utf-8'))
         result = json.loads(self.run_cli('fetch', self.base + '/large', '--max-mb', '1', ok=False).stdout)
         self.assertEqual(result['count'], 0)
         self.assertIn('max-mb', result['errors'][0]['message'])
@@ -230,7 +236,7 @@ globalThis.fetch = async (input, init) => {
         self.write_shim()
         self.run_cli('search', 'wood', '--kind', 'design', fixture=True)
         self.run_cli('preview', 'V1', '--sheet', '--dir', 'previews')
-        html = (self.cwd / 'previews/candidates.html').read_text()
+        html = (self.cwd / 'previews/candidates.html').read_text(encoding='utf-8')
         self.assertIn('&lt;script&gt;boom&lt;/script&gt;', html)
         self.assertIn('naturalWidth', html)
         self.assertIn('加载失败', html)
@@ -247,7 +253,7 @@ globalThis.fetch = async (input, init) => {
         self.assertTrue(Path(record['poster']).is_file())
         self.assertEqual((record['width'], record['height']), (64, 48))
         self.assertEqual(record['integrity'], 'full-decode')
-        self.assertIn('first-frame poster', (self.cwd / 'assets/SOURCES.md').read_text())
+        self.assertIn('first-frame poster', (self.cwd / 'assets/SOURCES.md').read_text(encoding='utf-8'))
 
     @unittest.skipUnless(FFMPEG and FFPROBE, 'ffmpeg/ffprobe required for recovered video')
     def test_failed_video_rendition_falls_back_without_losing_reason(self):
@@ -262,7 +268,7 @@ globalThis.fetch = async (input, init) => {
         self.assertTrue(Path(data['files'][0]['poster']).exists())
 
     def test_missing_tools_keep_download_and_report_unfinished_sheet(self):
-        result = subprocess.run([NODE, str(SCRIPT), 'fetch', self.base + '/image', '--sheet'], cwd=self.cwd, env={**os.environ, 'PATH': ''}, capture_output=True, text=True, timeout=20)
+        result = subprocess.run([NODE, str(SCRIPT), 'fetch', self.base + '/image', '--sheet'], cwd=self.cwd, env={**os.environ, 'PATH': ''}, capture_output=True, text=True, timeout=20, encoding='utf-8')
         self.assertEqual(result.returncode, 1)
         data = json.loads(result.stdout)
         self.assertEqual(data['count'], 1)
@@ -270,15 +276,65 @@ globalThis.fetch = async (input, init) => {
         self.assertEqual(data['files'][0]['integrity'], 'signature-and-length-only')
         self.assertIn('ffprobe', data['errors'][0]['message'])
 
+    @staticmethod
+    def cleanup_child(child):
+        if child.poll() is None:
+            child.kill()
+        child.communicate(timeout=10)
+
     def test_concurrent_searches_merge_cache_without_reassigning_refs(self):
-        children = [subprocess.Popen([NODE, '--import', str(self.shim), str(SCRIPT), 'search', 'wood', '--kind', kind], cwd=self.cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) for kind in ('texture', 'design', 'map', 'plate')]
+        children = []
+        for kind in ('texture', 'design', 'map', 'plate'):
+            child = subprocess.Popen(self.cli_command('search', 'wood', '--kind', kind, fixture=True), cwd=self.cwd,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8')
+            # LIFO cleanup runs before TemporaryDirectory cleanup, even on a failed
+            # assertion, communicate timeout, or a later Popen failing to start.
+            self.addCleanup(self.cleanup_child, child)
+            children.append(child)
         for child in children:
             out, err = child.communicate(timeout=30)
             self.assertEqual(child.returncode, 0, out + err)
-        items = json.loads((self.cwd / '.curate-cache.json').read_text())['items']
+        items = json.loads((self.cwd / '.curate-cache.json').read_text(encoding='utf-8'))['items']
         self.assertEqual(set(items), {'T1', 'T2', 'V1', 'L1', 'W1', 'C1', 'M1', 'A1', 'K1', 'J1'})
         ids = [(i['provider'], i['sourceId']) for i in items.values()]
         self.assertEqual(len(ids), len(set(ids)))
+
+    def test_concurrent_children_are_reaped_after_failure_timeout_or_start_error(self):
+        popen = subprocess.Popen
+        for mode in ('failure', 'timeout', 'start-error'):
+            with self.subTest(mode=mode):
+                children = []
+                probe = CurateMediaTests('test_concurrent_searches_merge_cache_without_reassigning_refs')
+
+                def start(*args, **kwargs):
+                    if mode == 'start-error' and children:
+                        raise OSError('injected startup failure')
+                    code = 'raise SystemExit(1)' if mode == 'failure' and not children else 'import time; time.sleep(120)'
+                    child = popen([sys.executable, '-c', code], **kwargs)
+                    # Keep the suite safe even when the inner cleanup regresses.
+                    self.addCleanup(self.cleanup_child, child)
+                    if mode == 'timeout' and not children:
+                        communicate = child.communicate
+
+                        def timed_out(*args, **kwargs):
+                            if kwargs.get('timeout') == 30:
+                                raise subprocess.TimeoutExpired(child.args, 30)
+                            return communicate(*args, **kwargs)
+
+                        child.communicate = timed_out
+                    children.append(child)
+                    return child
+
+                result = unittest.TestResult()
+                with patch.object(subprocess, 'Popen', side_effect=start):
+                    probe.run(result)
+                self.assertEqual(len(result.failures) + len(result.errors), 1, result.errors)
+                self.assertFalse(Path(probe.temp.name).exists())
+                self.assertEqual(len(children), 1 if mode == 'start-error' else 4)
+                for child in children:
+                    self.assertIsNotNone(child.poll())
+                    self.assertTrue(child.stdout.closed)
+                    self.assertTrue(child.stderr.closed)
 
     def test_map_selection_video_renditions_and_animation_filter(self):
         javascript = """import assert from 'node:assert/strict';
@@ -343,7 +399,7 @@ assert.deepEqual([paper.paper, paper.tone, paper.mono, paper.edge, paper.calm.le
         self.assertEqual(fetched['files'][0]['use'], 'reference')
         self.assertTrue(any('生图参考' in w for w in fetched['files'][0]['warnings']))
         self.assertTrue(Path(fetched['sheetImage']).exists())
-        self.assertIn('Use: reference only', (self.cwd / 'ref/SOURCES.md').read_text())
+        self.assertIn('Use: reference only', (self.cwd / 'ref/SOURCES.md').read_text(encoding='utf-8'))
 
     def test_japan_and_rijks_records_and_colbase_fallback(self):
         design = json.loads(self.run_cli('search', 'wood', '--kind', 'design', '--limit', '10', fixture=True).stdout)['items']

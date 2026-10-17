@@ -16,6 +16,7 @@ import shlex
 import sys
 import tempfile
 from urllib.parse import unquote, urlsplit
+from urllib.request import url2pathname
 
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
@@ -190,13 +191,20 @@ def read_text_asset(path: Path, used: set[Path]) -> str:
     return read_asset(path, used).decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
 
 
+def resource_parts(ref: str):
+    path = Path(ref)
+    if path.drive and path.is_absolute():
+        ref = path.as_uri()
+    return urlsplit(ref)
+
+
 def local_file(ref: str, base: Path, root: Path) -> Path | None:
     """Resolve files anywhere on disk; root is retained for compatibility with existing callers."""
     ref = ref.strip()
     if not ref or ref.startswith("#") or ref.lower().startswith("data:"):
         return None
     try:
-        parts = urlsplit(ref)
+        parts = resource_parts(ref)
     except ValueError:
         raise ValueError(f"资源地址无效：{ref}；请把引用替换为已有文件的绝对路径后重新生成") from None
     if (parts.scheme and parts.scheme.lower() != "file") or parts.netloc not in ("", "localhost") or ref.startswith("//"):
@@ -204,7 +212,9 @@ def local_file(ref: str, base: Path, root: Path) -> Path | None:
         command = f"curl -L --fail --output {shlex.quote(str(destination))} -- {shlex.quote(ref)}"
         raise ValueError(f"远程资源 {ref} 不能离线使用；先运行 `{command}`，"
                          f"再把引用 {json.dumps(ref, ensure_ascii=False)} 替换为 {json.dumps(str(destination), ensure_ascii=False)} 后重新生成")
-    target = (base / unquote(parts.path)).resolve()
+    # A file URL's /C:/... is not a Windows filesystem path. Decode it with
+    # the platform converter, which also handles percent-escaped filenames.
+    target = (base / url2pathname(parts.path)).resolve()
     if not target.is_file():
         raise ValueError(f"找不到本地资源 {ref}（解析为 {target}）；"
                          f"请将该文件保存到 {json.dumps(str(target), ensure_ascii=False)}，或把引用替换为已有文件的绝对路径后重新生成")
@@ -216,7 +226,7 @@ def resource_url(ref: str, base: Path, root: Path, used: set[Path]) -> str:
     if target is None:
         return ref
     mime = EMBEDDABLE.get(target.suffix.lower()) or mimetypes.guess_type(target.name)[0] or "application/octet-stream"
-    fragment = urlsplit(ref).fragment
+    fragment = resource_parts(ref).fragment
     return f"data:{mime};base64," + base64.b64encode(read_asset(target, used)).decode("ascii") + ("#" + fragment if fragment else "")
 
 
