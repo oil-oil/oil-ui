@@ -671,7 +671,7 @@ document.querySelector('#go').onclick = () => show(document.body.dataset.state =
         self.page.write_text('''<!doctype html><link rel="icon" href="data:,"><style>
 body{margin:0}#box{position:absolute;left:20px;top:20px;width:120px;height:120px;background:red}
 #box.prepared{background:lime}#box.feedback{animation:shake .36s linear}
-@keyframes shake{0%,100%{background:red;transform:none}50%{background:blue;transform:translateX(40px)}}
+@keyframes shake{0%,100%{background:red;transform:none}25%,75%{background:blue;transform:translateX(40px)}}
 #controls{position:absolute;top:180px}#drag{display:inline-block;width:80px;height:30px}
 #tail:hover{animation:tail .8s linear}@keyframes tail{from{opacity:.3}to{opacity:1}}
 @keyframes loop{to{transform:rotate(360deg)}}#loop{position:absolute;top:270px;width:40px;height:40px;background:gray;animation:loop 2s linear infinite}
