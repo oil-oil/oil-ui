@@ -114,7 +114,7 @@ class CurateMediaTests(unittest.TestCase):
         }
         self.write_shim()
 
-    def write_shim(self, failures=()):
+    def write_shim(self, failures=(), cache_rename_failures=0):
         self.shim.write_text('''const realFetch = globalThis.fetch;
 const fixtures = ''' + json.dumps(self.fixtures) + ''';
 const failures = ''' + json.dumps(list(failures)) + ''';
@@ -126,6 +126,20 @@ globalThis.fetch = async (input, init) => {
   throw new Error('Unexpected fixture request: ' + u.href);
 };
 ''', encoding='utf-8')
+        if cache_rename_failures:
+            with self.shim.open('a', encoding='utf-8') as shim:
+                shim.write('''
+import cacheFs from 'node:fs/promises';
+const realRename = cacheFs.rename;
+let renameFailures = ''' + str(cache_rename_failures) + ''';
+cacheFs.rename = async (source, target) => {
+  if (String(target).endsWith('.curate-cache.json') && renameFailures !== 0) {
+    if (renameFailures > 0) renameFailures--;
+    throw Object.assign(new Error('EPERM: simulated Windows cache sharing violation'), {code:'EPERM'});
+  }
+  return realRename(source, target);
+};
+''')
 
     def cli_command(self, *args, fixture=False):
         cmd = [NODE]
@@ -298,6 +312,21 @@ globalThis.fetch = async (input, init) => {
         self.assertEqual(set(items), {'T1', 'T2', 'V1', 'L1', 'W1', 'C1', 'M1', 'A1', 'K1', 'J1'})
         ids = [(i['provider'], i['sourceId']) for i in items.values()]
         self.assertEqual(len(ids), len(set(ids)))
+
+    def test_cache_replace_retries_busy_files_and_preserves_cache_on_failure(self):
+        self.run_cli('search', 'wood', '--kind', 'design', fixture=True)
+        self.write_shim(cache_rename_failures=2)
+        result = json.loads(self.run_cli('search', 'wood', '--kind', 'texture', '--refresh', fixture=True).stdout)
+        self.assertTrue(result['items'])
+        cache = self.cwd / '.curate-cache.json'
+        self.assertIn('V1', json.loads(cache.read_text(encoding='utf-8'))['items'])
+        previous = cache.read_bytes()
+        self.write_shim(cache_rename_failures=-1)
+        failed = self.run_cli('search', 'wood', '--kind', 'texture', fixture=True, ok=False)
+        self.assertIn('EPERM', failed.stderr)
+        self.assertEqual(cache.read_bytes(), previous)
+        self.assertFalse(list(self.cwd.glob('*.tmp')))
+        self.assertFalse(list(self.cwd.glob('*.lock')))
 
     def test_concurrent_children_are_reaped_after_failure_timeout_or_start_error(self):
         popen = subprocess.Popen

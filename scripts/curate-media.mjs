@@ -175,6 +175,18 @@ async function readCache(file) {
     throw new Error(`缓存 ${file} 无法读取：${e.message}；请用 --cache 指定新文件`);
   }
 }
+async function replaceCache(temp, file) {
+  const deadline = Date.now() + 5000;
+  for (;;) {
+    try { await fs.rename(temp, file); return; }
+    catch (error) {
+      // Windows readers/virus scanners can briefly deny replacing an existing
+      // file. Keep the old cache intact and retry only sharing/permission errors.
+      if (!['EPERM', 'EACCES', 'EBUSY'].includes(error.code) || Date.now() >= deadline) throw error;
+      await new Promise(resolve => setTimeout(resolve, 60));
+    }
+  }
+}
 // Serialize read/modify/write across concurrent agent processes; network calls stay outside the lock.
 async function updateCache(file, fn) {
   await fs.mkdir(path.dirname(file), { recursive: true });
@@ -189,7 +201,7 @@ async function updateCache(file, fn) {
   const temp = file + '.' + randomUUID() + '.tmp';
   try {
     const data = await readCache(file); const result = await fn(data);
-    await fs.writeFile(temp, JSON.stringify(data)); await fs.rename(temp, file); return result;
+    await fs.writeFile(temp, JSON.stringify(data)); await replaceCache(temp, file); return result;
   } finally { await fs.rm(temp, { force: true }); await fs.rmdir(lock); }
 }
 async function catalogue(type, opts) {
