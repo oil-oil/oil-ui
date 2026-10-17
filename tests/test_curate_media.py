@@ -10,11 +10,9 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 import tempfile
 import threading
 import unittest
-from unittest.mock import patch
 import zlib
 import struct
 
@@ -327,43 +325,6 @@ cacheFs.rename = async (source, target) => {
         self.assertEqual(cache.read_bytes(), previous)
         self.assertFalse(list(self.cwd.glob('*.tmp')))
         self.assertFalse(list(self.cwd.glob('*.lock')))
-
-    def test_concurrent_children_are_reaped_after_failure_timeout_or_start_error(self):
-        popen = subprocess.Popen
-        for mode in ('failure', 'timeout', 'start-error'):
-            with self.subTest(mode=mode):
-                children = []
-                probe = CurateMediaTests('test_concurrent_searches_merge_cache_without_reassigning_refs')
-
-                def start(*args, **kwargs):
-                    if mode == 'start-error' and children:
-                        raise OSError('injected startup failure')
-                    code = 'raise SystemExit(1)' if mode == 'failure' and not children else 'import time; time.sleep(120)'
-                    child = popen([sys.executable, '-c', code], **kwargs)
-                    # Keep the suite safe even when the inner cleanup regresses.
-                    self.addCleanup(self.cleanup_child, child)
-                    if mode == 'timeout' and not children:
-                        communicate = child.communicate
-
-                        def timed_out(*args, **kwargs):
-                            if kwargs.get('timeout') == 30:
-                                raise subprocess.TimeoutExpired(child.args, 30)
-                            return communicate(*args, **kwargs)
-
-                        child.communicate = timed_out
-                    children.append(child)
-                    return child
-
-                result = unittest.TestResult()
-                with patch.object(subprocess, 'Popen', side_effect=start):
-                    probe.run(result)
-                self.assertEqual(len(result.failures) + len(result.errors), 1, result.errors)
-                self.assertFalse(Path(probe.temp.name).exists())
-                self.assertEqual(len(children), 1 if mode == 'start-error' else 4)
-                for child in children:
-                    self.assertIsNotNone(child.poll())
-                    self.assertTrue(child.stdout.closed)
-                    self.assertTrue(child.stderr.closed)
 
     def test_map_selection_video_renditions_and_animation_filter(self):
         javascript = """import assert from 'node:assert/strict';

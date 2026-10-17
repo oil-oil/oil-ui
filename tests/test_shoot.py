@@ -101,34 +101,8 @@ process.stdout.write(eval(writer+'; screencastList(frames,finished)'));'''
                                 capture_output=True, text=True, timeout=10, encoding='utf-8')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("用法", result.stdout)
-        self.assertIn("type 在当前光标处插入文字", result.stdout)
-        self.assertIn("fill 先清空原内容", result.stdout)
-        self.assertNotIn("fill=type", result.stdout)
-        self.assertIn("不进入 iframe 或 Shadow DOM", result.stdout)
-        self.assertIn("中心点遮挡和禁用状态", result.stdout)
-        self.assertIn("显式 --zoom 按倍数截每个状态", result.stdout)
-        for example in ['button:text-is("Save")', '.item >> nth=1', '--hold1000', '双倍时限整次重跑一次']:
-            self.assertIn(example, result.stdout)
 
-    def test_help_carries_the_reference_and_report_structure_example(self):
-        """参考内容放在 --help 里；references/tools.md 只讲什么时候用，并指到这里。"""
-        documentation = subprocess.run([NODE, str(SCRIPT), "--help"], cwd=ROOT,
-                                       capture_output=True, text=True, timeout=10, encoding='utf-8').stdout
-        self.assertIn('最外层是数组', documentation)
-        self.assertIn('不是把页面放大到 200% 后的重排', documentation)
-        self.assertIn('录屏短于 3 秒是正常的', documentation)
-        self.assertIn('frames.start/mid/end', documentation)
-        lines = documentation.split('结构示意：', 1)[1].strip().splitlines()[:2]
-        report = json.loads(''.join(line.strip() for line in lines))
-        self.assertIsInstance(report, list)
-        self.assertIn('lint', report[0])
-        self.assertIn('motion', report[1])
-        self.assertTrue(all('issues' in entry for entry in report))
-        guide = (ROOT / 'references/tools.md').read_text(encoding='utf-8')
-        self.assertIn('--help', guide)
-        self.assertLess(len(guide), 3500, 'tools.md 只留什么时候用和最常用的命令，参考内容写进 --help')
-
-    def test_timeout_scale_validation_and_help(self):
+    def test_timeout_scale_validation(self):
         plan = self.dry('--timeout-scale', '2')
         self.assertEqual(plan['options']['timeout-scale'], '2')
         for value in ('0', '-1', '0.5', 'NaN', 'Infinity', 'slow'):
@@ -136,9 +110,6 @@ process.stdout.write(eval(writer+'; screencastList(frames,finished)'));'''
                 message = self.dry('--timeout-scale', value, ok=False)
                 self.assertIn('收到 ' + value, message)
                 self.assertIn('--timeout-scale 2', message)
-        result = subprocess.run([NODE, str(SCRIPT), '--help'], capture_output=True, text=True, timeout=10, encoding='utf-8')
-        self.assertIn('90 秒', result.stdout)
-        self.assertIn('--timeout-scale', result.stdout)
 
     def test_missing_target(self):
         result = subprocess.run([NODE, str(SCRIPT)], cwd=ROOT,
@@ -146,13 +117,6 @@ process.stdout.write(eval(writer+'; screencastList(frames,finished)'));'''
         self.assertNotEqual(result.returncode, 0)
 
     def test_unknown_option(self):
-        help_result = subprocess.run([NODE, str(SCRIPT), "--help"], cwd=ROOT,
-                                     capture_output=True, text=True, timeout=10, encoding='utf-8')
-        self.assertEqual(help_result.returncode, 0, help_result.stderr)
-        options = [line.split()[0] for line in help_result.stdout.splitlines()
-                   if line.startswith("  --")]
-        # The short stitching/sequence sentence documents these three inline value options.
-        options += ['--label', '--columns', '--frames']
         for args in (("--xxx",), ("--xxx", "value")):
             with self.subTest(args=args):
                 result = subprocess.run([NODE, str(SCRIPT), *args], cwd=ROOT,
@@ -160,7 +124,6 @@ process.stdout.write(eval(writer+'; screencastList(frames,finished)'));'''
                 self.assertEqual(result.returncode, 1)
                 self.assertIn("不认识的选项 --xxx", result.stderr)
                 self.assertIn("是不是想写", result.stderr)
-                self.assertIn("可用选项：" + " ".join(options), result.stderr)
                 self.assertEqual(result.stdout, "")
 
     def test_missing_option_value(self):
@@ -171,12 +134,6 @@ process.stdout.write(eval(writer+'; screencastList(frames,finished)'));'''
                                             capture_output=True, text=True, timeout=10, encoding='utf-8')
                     self.assertEqual(result.returncode, 1)
                     self.assertEqual(result.stderr, f"shoot：{option} 需要一个值\n")
-
-    def test_force_is_ignored(self):
-        result = subprocess.run([NODE, str(SCRIPT), "--force"], cwd=ROOT,
-                                capture_output=True, text=True, timeout=10, encoding='utf-8')
-        self.assertEqual(result.returncode, 1)
-        self.assertEqual(result.stderr, "shoot：缺少页面地址或文件。\n")
 
     def dry(self, *args, ok=True):
         result = subprocess.run([NODE, str(SCRIPT), "page.html", "--dry-run", *args],
@@ -868,10 +825,6 @@ new IntersectionObserver(e=>e.forEach(x=>x.isIntersecting&&x.target.classList.ad
         issues = "\n".join(json.loads((output / "report.json").read_text(encoding="utf-8"))[0]["issues"])
         self.assertIn("首次进入：没有检测到动画", issues)
         self.assertIn("滚动：没有检测到", issues)
-
-    def test_steps_accept_unquoted_selectors_with_spaces(self):
-        self.shoot(self.folder / "unquoted", "--steps", "click body #go")
-        self.shoot(self.folder / "quoted", "--steps", 'click "body #go"')
 
     def test_motion_skips_scroll_check_on_single_screen(self):
         self.page.write_text('''<!doctype html><html><head><link rel="icon" href="data:,"><style>

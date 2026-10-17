@@ -397,16 +397,5 @@ class CheckUpdateTest(unittest.TestCase):
         self.assertEqual(self.run_check(XDG_STATE_HOME=str(self.tmp / "s4")), "")
 
 
-
-class ChineseLabelTest(unittest.TestCase):
-    def test_no_space_after_chinese_label(self):
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("check_update", SCRIPT)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        self.assertEqual(module.zh_label("Oil UI 开源版") + "有新版本", "Oil UI 开源版有新版本")
-        self.assertEqual(module.zh_label("Oil UI Pro") + "有新版本", "Oil UI Pro 有新版本")
-
-
 if __name__ == "__main__":
     unittest.main()

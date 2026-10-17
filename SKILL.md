@@ -7,7 +7,7 @@ allowed-tools:
   - Bash(python *check_update.py*)
   - Bash(py -3 *check_update.py*)
 metadata:
-  version: "0.23.5"
+  version: "0.23.6"
   compatibility: "核心为宿主中立的文本流程，不依赖其他 Skill 或指定模型。可选风格对比页生成器需要 Python 3.10+ 标准库，产物仅需现代浏览器；本机地址候选需要对应的本地开发服务器在运行。实际视觉验收需要看图能力；交互验收需要可操作环境；独立评审需要隔离上下文且能看图的执行者。"
 ---
 

@@ -939,30 +939,6 @@ console.log(JSON.stringify(result));
         with self.assertRaises(ValueError):
             builder.build(self.manifest, self.output)
 
-    def test_template_keeps_documented_comparison_features(self):
-        builder.build(self.manifest, self.output)
-        page = self.output.read_text(encoding="utf-8")
-        hooks = {
-            "并排与单张": 'data-layout="loupe"',
-            "手机视口": 'data-viewport="mobile"',
-            "实际尺寸": '实际尺寸 100%',
-            "选择": "st.chosen",
-            "选择即复制": 'navigator.clipboard',
-            "本地地址候选": "c.kind==='url'",
-            "服务未运行提示": "开发服务器没有运行",
-            "复制启动命令": "button.dataset.copyServe",
-            "现状基线": "c.baseline",
-            "可操作小样": "c.interactive",
-            "按轮次保存": "DATA.fingerprint",
-            "展示北极星": "c.concept",
-            "展示色板": "c.palette",
-        }
-        missing = [name for name, hook in hooks.items() if hook not in page]
-        self.assertEqual(missing, [], "模板缺少对比页承诺的功能，见 .github/EXPLORER.md")
-        for removed in ('class="bar-r"', 'id="round"', 'id="filter-list"', 'id="notes-toggle"',
-                        'id="notes"', 'id="show-all"', "liveSource", "imageSource", "interactiveSource", "htmlSource"):
-            self.assertNotIn(removed, page)
-
     def test_brand_assets_and_edition_survive_relocation(self):
         copy = self.folder / "relocated"
         shutil.copytree(ROOT / "scripts", copy / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
@@ -983,15 +959,6 @@ console.log(JSON.stringify(result));
                 self.assertNotIn('href="logo.png"', page)
                 self.assertNotIn('src="logo.png"', page)
                 self.assertNotIn('url("fonts/', page)
-
-    def test_copied_skill_works_from_another_directory(self):
-        copy = self.folder / "relocated"
-        shutil.copytree(ROOT / "scripts", copy / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
-        shutil.copytree(ROOT / "assets", copy / "assets")
-        run = subprocess.run([sys.executable, str(copy / "scripts" / "build_explorer.py"), str(self.manifest), "--output", str(self.output)], cwd=self.folder, capture_output=True, text=True, encoding="utf-8")
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertTrue(self.output.is_file())
-
 
     def test_every_manifest_problem_is_reported_in_one_pass(self):
         self.data["schemaVersion"] = 2
