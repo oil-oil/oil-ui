@@ -95,6 +95,7 @@ process.stdout.write(eval(writer+'; screencastList(frames,finished)'));'''
                                       'format=rgb24,crop=1:1:32:32', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'],
                                      check=True, capture_output=True, timeout=10).stdout
             self.assertGreater(decoded[-1], 180, 'The appended screenshot must be the encoded last frame')
+            self.assertLess(len(decoded) / (3 * 30), 3, 'A sub-second recording must not be padded to three seconds')
 
     def test_help(self):
         result = subprocess.run([NODE, str(SCRIPT), "--help"], cwd=ROOT,
@@ -735,7 +736,7 @@ addEventListener('keydown',e=>{if(e.key==='Enter')feedback()});
         self.assertTrue(all(channel > 245 for channel in first), first)
 
     @unittest.skipUnless(shutil.which('ffmpeg'), 'ffmpeg is needed to inspect frame pixels')
-    def test_entry_frames_span_content_to_stable_and_short_recording_is_valid(self):
+    def test_entry_frames_span_content_to_stable(self):
         self.page.write_text('''<!doctype html><link rel="icon" href="data:,"><style>
 body{margin:0;background:#ffd000}#box{width:200px;height:200px;background:blue;animation:appear .6s linear both}
 @keyframes appear{from{opacity:0}to{opacity:1}}
@@ -748,7 +749,6 @@ body{margin:0;background:#ffd000}#box{width:200px;height:200px;background:blue;a
         self.assertLess(frames['start']['timeMs'], frames['mid']['timeMs'])
         self.assertLess(frames['mid']['timeMs'], frames['end']['timeMs'])
         self.assertEqual(frames['end']['timeMs'], entry['durationMs'])
-        self.assertLess(entry['durationMs'], 3000)
         self.assertGreater(entry['durationMs'], 600)
         first = self.frame_pixel(output / 'record.mp4')
         self.assertTrue(all(channel > 245 for channel in first), first)
