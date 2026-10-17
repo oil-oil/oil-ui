@@ -1663,7 +1663,9 @@ globalThis.setTimeout=(callback,delay,...args)=>{
 };
 const Native=globalThis.WebSocket;
 globalThis.WebSocket=class extends Native {
- set onopen(callback){super.onopen=mode==='connect'&&fault()?null:callback}
+ // The watchdog records the fault before onopen is assigned; decide once per socket.
+ constructor(...args){super(...args);this.dropOpen=mode==='connect'&&fault()}
+ set onopen(callback){super.onopen=this.dropOpen?null:callback}
  send(data){const msg=JSON.parse(data);
   const selected=mode==='setup'?msg.method==='Target.createTarget':mode==='cdp'&&msg.method==='Runtime.evaluate'&&msg.params.expression.includes('"value":"#hang"');
   if(selected){write({stage:mode,timeout:watchdog.delay});if(fault()){write({fault:mode});clearTimeout(watchdog.timer);original(watchdog.callback,100);return}}
