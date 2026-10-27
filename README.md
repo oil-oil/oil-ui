@@ -10,7 +10,7 @@ English · [中文](README.zh-CN.md)
 
 Oil UI is an interface design skill for AI agents. It explores a few genuinely different design directions side by side, lets you choose one, then refines it against real screenshots. It works for websites, apps, dashboards, and components. See more designs at [ui.oiloil.org](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en).
 
-China mirror: [AtomGit](https://atomgit.com/weixin_47077674/oil-ui), synced from GitHub.
+China mirror: [AtomGit](https://atomgit.com/oil-oil/oil-ui), synced from GitHub.
 
 ## How it designs
 

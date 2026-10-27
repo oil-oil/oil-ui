@@ -10,7 +10,7 @@
 
 Oil UI 是给 AI Agent 用的界面设计 Skill：先拉开几种真正不同的设计方向放在一起让你挑，再照着真实画面打磨。网站、App、后台和组件都能做。想看更多效果，可以去 [ui.oiloil.org](https://ui.oiloil.org/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh)。
 
-国内 AtomGit 托管：[oil-ui](https://atomgit.com/weixin_47077674/oil-ui)，自动同步 GitHub 仓库。
+国内 AtomGit 托管：[oil-ui](https://atomgit.com/oil-oil/oil-ui)，自动同步 GitHub 仓库。
 
 ## 它怎么设计
 
