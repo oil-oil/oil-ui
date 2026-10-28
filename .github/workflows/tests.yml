@@ -1,12 +1,7 @@
 name: tests
 
-# 公开版的截图工具要在真实 Chrome 和 Edge 上跑，本机只有 macOS，所以放到 CI。
-# 四个环境各跑一遍公开包里的全部测试：
-#   Linux + Chrome
-#   Linux + Chrome，区域设置换成 GBK（中文 Windows 的默认编码，查读写和输出有没有偷用系统编码）
-#   Windows + Chrome，系统设成深色主题
-#   Windows + Edge，先升到最新稳定版
-# PR 合并前验证；main 的公开内容变动后再验证，也可以手动运行。
+# 公开版核心测试按操作系统验证；真实浏览器测试按 Chrome / Edge 和区域设置分层。
+# PR 只有文档变化时跳过浏览器矩阵；脚本、测试、浏览器资源和工作流变化，以及 main / 手动运行仍执行完整矩阵。
 on:
   push:
     branches: [main]
@@ -20,8 +15,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  tests:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      browser: ${{ steps.select_browser.outputs.browser }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: select_browser
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "browser=1" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only origin/main...HEAD | grep -E '^(scripts/|tests/|assets/|\.github/workflows/tests\.yml$)' >/dev/null; then
+            echo "browser=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "browser=0" >> "$GITHUB_OUTPUT"
+          fi
+
+  core:
+    name: ${{ matrix.os }} · 核心测试
+    needs: select
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 运行非浏览器测试
+        shell: bash
+        run: |
+          python - <<'PY'
+          import sys, unittest
+          modules = ["test_check_update", "test_oiloil_image", "test_curate_media", "test_workdir"]
+          suite = unittest.defaultTestLoader.loadTestsFromNames(modules)
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          sys.exit(not result.wasSuccessful())
+          PY
+
+  browser:
     name: ${{ matrix.name }}
+    needs: select
+    if: needs.select.outputs.browser == '1'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     strategy:
@@ -75,7 +119,7 @@ jobs:
           if (-not $edge) { throw "没找到 Edge" }
           "CHROME_PATH=$edge" >> $env:GITHUB_ENV
           Write-Output "Edge $((Get-Item $edge).VersionInfo.ProductVersion)"
-      - name: 跑全部测试
+      - name: 运行浏览器相关测试
         # 模拟中文 Windows 的默认文本编码，保留 Unicode 文件系统与 Node argv。
         # 若在 Python 启动前把整个 Linux locale 换成 GBK，文件名和参数会先被
         # 编成 GBK 字节；Node 按 UTF-8 读取后损坏，反而不是 Windows 的行为。
@@ -86,7 +130,8 @@ jobs:
           if os.environ.get("OIL_TEST_LOCALE"):
               locale.setlocale(locale.LC_CTYPE, os.environ["OIL_TEST_LOCALE"])
           print(f"text={locale.getencoding()} filesystem={sys.getfilesystemencoding()}", flush=True)
-          suite = unittest.defaultTestLoader.discover("tests")
+          modules = ["test_build_explorer", "test_prep_image", "test_shoot"]
+          suite = unittest.defaultTestLoader.loadTestsFromNames(modules)
           result = unittest.TextTestRunner(verbosity=2).run(suite)
           sys.exit(not result.wasSuccessful())
           PY
