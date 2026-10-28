@@ -424,7 +424,7 @@ class OiloilImageTests(unittest.TestCase):
         self.disconnect = True
         result = self.call('image', '<说明>', '--out', 'assets/$literal.webp')
         self.assertEqual(result.returncode, 6)
-        self.assertIn(f"--out '{self.cwd}/assets/$literal.webp'", result.stderr)
+        self.assertIn(f"--out '{self.cwd.as_posix()}/assets/$literal.webp'", result.stderr)
 
     def test_transport_failure_preserves_the_key_for_status_without_retrying(self):
         self.disconnect = True
