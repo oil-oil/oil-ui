@@ -55,7 +55,8 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import sys, unittest
+          import os, sys, unittest
+          sys.path.insert(0, os.path.abspath("tests"))
           modules = ["test_check_update", "test_oiloil_image", "test_curate_media", "test_workdir"]
           suite = unittest.defaultTestLoader.loadTestsFromNames(modules)
           result = unittest.TextTestRunner(verbosity=2).run(suite)
@@ -130,6 +131,7 @@ jobs:
           if os.environ.get("OIL_TEST_LOCALE"):
               locale.setlocale(locale.LC_CTYPE, os.environ["OIL_TEST_LOCALE"])
           print(f"text={locale.getencoding()} filesystem={sys.getfilesystemencoding()}", flush=True)
+          sys.path.insert(0, os.path.abspath("tests"))
           modules = ["test_build_explorer", "test_prep_image", "test_shoot"]
           suite = unittest.defaultTestLoader.loadTestsFromNames(modules)
           result = unittest.TextTestRunner(verbosity=2).run(suite)
