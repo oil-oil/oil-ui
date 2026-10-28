@@ -1,0 +1,99 @@
+name: tests
+
+# 公开版的截图工具要在真实 Chrome 和 Edge 上跑，本机只有 macOS，所以放到 CI。
+# 四个环境各跑一遍公开包里的全部测试：
+#   Linux + Chrome
+#   Linux + Chrome，区域设置换成 GBK（中文 Windows 的默认编码，查读写和输出有没有偷用系统编码）
+#   Windows + Chrome，系统设成深色主题
+#   Windows + Edge，先升到最新稳定版
+# PR 合并前验证；main 的公开内容变动后再验证，也可以手动运行。
+on:
+  push:
+    branches: [main]
+    paths: ["scripts/**", "tests/**", "assets/**", "references/**", "SKILL.md", ".github/workflows/tests.yml"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "linux · chrome", os: ubuntu-latest }
+          - { name: "linux · chrome · GBK", os: ubuntu-latest, locale: zh_CN.GBK }
+          - { name: "windows · chrome · 深色主题", os: windows-latest, theme: dark, node: 24 }
+          - { name: "windows · edge", os: windows-latest, browser: edge }
+    env:
+      # 托管机器只有两个核、用软件渲染，抓不住 0.36 秒的反馈，那一条实时取帧的测试只在本机跑。
+      OIL_SHOOT_SLOW_HOST: "1"
+    steps:
+      - name: 换行符保持原样
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node || 22 }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Linux：装 ffmpeg，放开 Chrome 沙箱要用的用户命名空间
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ffmpeg fonts-noto-cjk
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Linux：换成 GBK 区域设置
+        if: matrix.locale
+        run: |
+          sudo locale-gen ${{ matrix.locale }}
+          echo "OIL_TEST_LOCALE=${{ matrix.locale }}" >> "$GITHUB_ENV"
+      - name: Windows：装 ffmpeg
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
+      - name: Windows：系统设成深色主题
+        if: matrix.theme == 'dark'
+        shell: pwsh
+        run: |
+          $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+          New-Item -Path $key -Force | Out-Null
+          Set-ItemProperty -Path $key -Name AppsUseLightTheme -Value 0 -Type DWord
+          Set-ItemProperty -Path $key -Name SystemUsesLightTheme -Value 0 -Type DWord
+      - name: Windows：指定用 Edge
+        if: matrix.browser == 'edge'
+        shell: pwsh
+        run: |
+          $edge = @("${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe", "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $edge) { throw "没找到 Edge" }
+          "CHROME_PATH=$edge" >> $env:GITHUB_ENV
+          Write-Output "Edge $((Get-Item $edge).VersionInfo.ProductVersion)"
+      - name: 跑全部测试
+        # 模拟中文 Windows 的默认文本编码，保留 Unicode 文件系统与 Node argv。
+        # 若在 Python 启动前把整个 Linux locale 换成 GBK，文件名和参数会先被
+        # 编成 GBK 字节；Node 按 UTF-8 读取后损坏，反而不是 Windows 的行为。
+        shell: bash
+        run: |
+          python - <<'PY'
+          import locale, os, sys, unittest
+          if os.environ.get("OIL_TEST_LOCALE"):
+              locale.setlocale(locale.LC_CTYPE, os.environ["OIL_TEST_LOCALE"])
+          print(f"text={locale.getencoding()} filesystem={sys.getfilesystemencoding()}", flush=True)
+          suite = unittest.defaultTestLoader.discover("tests")
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          sys.exit(not result.wasSuccessful())
+          PY
+      - name: Windows：没有留下浏览器进程
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $left = @(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('oil-shoot-') -and $_.CommandLine.Contains('user-data-dir') })
+          $left | Select-Object ProcessId, Name | Format-Table
+          if ($left.Count) { throw "有 $($left.Count) 个浏览器进程没有退出" }
