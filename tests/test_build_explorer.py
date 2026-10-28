@@ -65,7 +65,8 @@ const send=(method,params={},sessionId)=>new Promise((resolve,reject)=>{
  const id=++seq;pending.set(id,{resolve,reject});
  chrome.stdio[3].write(JSON.stringify({id,method,params,...(sessionId?{sessionId}:{})})+'\0');
 });
-const deadline=setTimeout(()=>{console.error('Browser probe timed out');chrome.kill('SIGKILL');process.exitCode=1;},15000);
+const deadlineMs=process.env.OIL_SHOOT_SLOW_HOST?30000:15000;
+const deadline=setTimeout(()=>{console.error('Browser probe timed out');chrome.kill('SIGKILL');process.exitCode=1;},deadlineMs);
 try{
  const {targetId}=await send('Target.createTarget',{url:'about:blank'});
  const {sessionId}=await send('Target.attachToTarget',{targetId,flatten:true});
@@ -86,7 +87,8 @@ finally{clearTimeout(deadline);chrome.kill();}
         runner = runner.replace("#i18n-result", "#" + result_id)
         return subprocess.run([shutil.which("node"), "--input-type=module", "-e", runner, chrome,
                                str(self.folder / profile), self.output.as_uri()],
-                              capture_output=True, text=True, timeout=25, encoding="utf-8")
+                              capture_output=True, text=True,
+                              timeout=45 if os.environ.get("OIL_SHOOT_SLOW_HOST") else 25, encoding="utf-8")
 
     def test_lang_is_optional_and_preserved_when_explicit(self):
         builder.build(self.manifest, self.output)

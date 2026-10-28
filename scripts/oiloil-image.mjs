@@ -370,7 +370,7 @@ export async function main(argv = process.argv.slice(2)) {
     console.error(failure.message);
     keepRecovery = Boolean(recovery && (recovery.received || recovery.statusRequired));
     if (recovery?.received) console.error(`生成响应保留在 ${quoted(recovery.extra ?? recovery.file)}${recovery.writeFailed ? '（写入未完成，请检查磁盘空间）' : ''}；请先恢复已返回的结果，不要重新生图。`);
-    if (recovery?.statusRequired) console.error(`原请求幂等键：${recovery.idempotencyKey}。可运行 node <skill>/scripts/oiloil-image.mjs status ${recovery.idempotencyKey}${recovery.out ? ` --out ${shellQuote(recovery.out)}` : ''} 查询并恢复原图；请求信息保留在 ${quoted(recovery.requestFile)}。`);
+    if (recovery?.statusRequired) console.error(`原请求幂等键：${recovery.idempotencyKey}。可运行 node <skill>/scripts/oiloil-image.mjs status ${recovery.idempotencyKey}${recovery.out ? ` --out ${shellQuote(recovery.out.replaceAll(path.sep, '/'))}` : ''} 查询并恢复原图；请求信息保留在 ${quoted(recovery.requestFile)}。`);
     return failure.code;
   } finally {
     await recovery?.handle.close().catch(() => {});
