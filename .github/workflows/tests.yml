@@ -61,7 +61,7 @@ jobs:
           python - <<'PY'
           import os, sys, unittest
           sys.path.insert(0, os.path.abspath("tests"))
-          modules = ["test_check_update", "test_oiloil_image", "test_curate_media", "test_workdir"]
+          modules = ["test_check_update", "test_measure_reference", "test_oiloil_image", "test_curate_media", "test_workdir"]
           suite = unittest.defaultTestLoader.loadTestsFromNames(modules)
           result = unittest.TextTestRunner(verbosity=2).run(suite)
           sys.exit(not result.wasSuccessful())
