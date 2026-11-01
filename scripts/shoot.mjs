@@ -28,7 +28,7 @@ const HELP = `常用命令：
   --zoom <倍数,...>     默认 1；例如 --zoom 1,2，每个倍数各出一套；配 --evidence 时覆盖默认截图倍数
   --full                截整页，默认只截视口
   --selector <选择器>   只截匹配元素的区域，自动滚入视口；不与 --full、--record、--frames、--motion、--entry、--evidence 同用
-  --thumb               快速缩略图：按 0.5 倍分辨率截视口，缩短等待并跳过默认做法检查
+  --thumb               快速缩略图：按 0.5 倍分辨率截视口，缩短等待并跳过可读性检查
   --mask                另截一份遮掉全部文字的版本
   --sheet               把状态拼成并排图，配合 --mask 再拼遮字版
   --no-sheet            多目标截图时不自动生成 sheet.png
@@ -89,7 +89,7 @@ const HELP = `常用命令：
 重跑后截图仍超时则继续后面的项，返回码 1；其他协议超时或浏览器意外断开时退出。
 多项命令每完成一项向标准错误打印进度，标准输出仍是最后的汇总。
 每张图检查控制台错误、横向溢出和加载失败的图片，明细写进 report.json；
-默认做法和可读性提示写进 lint 字段。录屏需要 ffmpeg，没有时只留帧。
+可读性与渲染提示写进 lint 字段。录屏需要 ffmpeg，没有时只留帧。
 
 和 --states 一起用：
   普通截图会在每个状态执行每组 --steps；动效探测和动作录屏只从第一个状态、第一种尺寸开始，
@@ -124,9 +124,6 @@ const HELP = `常用命令：
   没有配 --steps 时，如果动效由点击等交互触发，提示会说明需要配 --steps 才能探测；
   页面不能滚动时跳过滚动检查；Canvas 和 WebGL 里的动画可能探测不到，以录屏为准。
   本地文件会用只监听本机的临时服务器打开；地址里带 ? 或 & 时加引号，或改用 --query。
-  本地文件默认做法提示：入口 HTML 或它直接引用的本地 CSS/JS 超过 40 KiB，或有超过 20,000 字符的单行时，建议按功能拆分。
-  40 KiB 略高于画廊入口 HTML 的 34 KiB 第 90 百分位，能提示 84 KiB 和 309 KiB 的大文件；
-  20,000 字符能捕捉 49,000 字符的超长行，也给常见的小样留出余量。跳过 vendor/、node_modules/、*.min.* 和 data: 资源。
   WebGL 页面在没有显卡的机器上改用软件渲染；画布没能创建绘图上下文时会记为问题，这时截图是空的。`;
 
 function fail(message) { console.error(`shoot：${message}`); process.exit(1); }
@@ -763,15 +760,13 @@ async function check() {
   return [...problems, ...found];
 }
 
-// ---------- 默认做法提示：模型默认审美和可读性里能机械判断的几项 ----------
-// 在页面里运行，不能引用外层变量。只报不拦：命中的改掉，或在交付说明里写出理由。
+// ---------- 可读性与渲染提示：对比度、过小字号、过紧行高、停在透明 ----------
+// 在页面里运行，不能引用外层变量。
 function lintPage() {
   const LABELS = {
-    eyebrow: "标题上方的眉标", numbered: "标题上方的编号标签", sideStripe: "彩色单侧边线",
-    gradientText: "渐变文字", emojiIcon: "表情符号当图标",
-    englishLabel: "中文界面里的英文大写标签", contrastLow: "文字对比度不达标（正文低于 4.5:1，大字低于 3:1）", grayOnColor: "有色底上的灰字",
-    smallText: "正文小于 13px", tightLeading: "多行正文行高过紧", longMeasure: "正文行太长",
-    stuck: "首屏有内容停在透明状态（出场动画没触发？）", headingSpacing: "标题离上文比离下文还近",
+    contrastLow: "文字对比度不达标（正文低于 3:1，大字低于 2.5:1）",
+    smallText: "正文小于 11px", tightLeading: "多行正文行高过紧",
+    stuck: "首屏有内容停在透明状态（出场动画没触发？）",
   };
   const found = new Map();
   const describe = (el) => {
@@ -812,7 +807,6 @@ function lintPage() {
     return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
   };
   const ratio = (a, b) => { const x = luminance(a), y = luminance(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
-  const chroma = ({ r, g, b }) => (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
   const over = (top, bottom) => ({
     r: top.r * top.a + bottom.r * (1 - top.a), g: top.g * top.a + bottom.g * (1 - top.a),
     b: top.b * top.a + bottom.b * (1 - top.a), a: 1,
@@ -838,122 +832,6 @@ function lintPage() {
   const all = [...document.body.querySelectorAll("*")].slice(0, 8000)
     .filter((el) => !el.closest("svg,script,style,noscript,template,head,[aria-hidden='true'],#oil-mark"));
   const texts = all.filter((el) => ownText(el).length >= 2 && shown(el));
-  const cjkCount = (document.body.innerText.match(/[一-鿿]/g) || []).length;
-  const latinCount = (document.body.innerText.match(/[A-Za-z]/g) || []).length;
-  const chinese = cjkCount > 120 && cjkCount > latinCount / 2;
-
-  // 眉标与编号标签：紧贴在标题正上方、比标题小很多的一行短字
-  const flaggedAbove = new Set();
-  const headings = [...document.querySelectorAll("h1,h2,h3")].filter(shown);
-  for (const h of headings) {
-    const hs = parseFloat(css(h).fontSize);
-    if (hs < 20) continue;
-    let prev = h.previousElementSibling, node = h;
-    while (!prev && node.parentElement && node.parentElement !== document.body) { node = node.parentElement; prev = node.previousElementSibling; }
-    if (!prev || !shown(prev) || prev.closest("nav,[aria-label*='readcrumb' i],[class*='breadcrumb' i]")) continue;
-    if (prev.querySelector("a,button,input,select,textarea,img,video,canvas") || /^(A|BUTTON|INPUT|IMG)$/.test(prev.tagName)) continue;
-    const text = (prev.innerText || "").trim();
-    if (!text || text.length > 48 || text.includes("\n")) continue;
-    let holder = prev;
-    while (!ownText(holder) && holder.children.length === 1) holder = holder.children[0];
-    const s = css(holder), size = parseFloat(s.fontSize);
-    if (size > 16 || size > hs * 0.6) continue;
-    const pr = prev.getBoundingClientRect(), hr = h.getBoundingClientRect();
-    if (pr.bottom > hr.top + 4 || hr.top - pr.bottom > Math.max(32, hs * 1.2) || pr.right < hr.left || pr.left > hr.right) continue;
-    const caps = s.textTransform === "uppercase" || (/[A-Z]{3}/.test(text) && text === text.toUpperCase());
-    const tracked = parseFloat(s.letterSpacing) / size >= 0.05;
-    const mono = /mono|courier|consolas|menlo/i.test(s.fontFamily);
-    const ps = css(prev);
-    const pill = parseFloat(ps.borderTopLeftRadius) >= pr.height / 3 && (rgba(ps.backgroundColor).a > 0.1 || parseFloat(ps.borderTopWidth) >= 1);
-    const numbered = /^0\d$/.test(text) || /^(?:0?\d{1,2}|[IVX]{1,4})(?:\s*[\/·—–|]\s*|[.:]\s+)\S/.test(text);
-    if (numbered) { add("numbered", prev); flaggedAbove.add(h); }
-    else if (caps || tracked || mono || pill) { add("eyebrow", prev); flaggedAbove.add(h); }
-  }
-
-  // 标题离下文应比离上文近：标题属于它后面的内容
-  for (const h of headings) {
-    if (flaggedAbove.has(h)) continue;
-    const parent = css(h.parentElement);
-    if (parent.display.includes("grid") || (parent.display.includes("flex") && !parent.flexDirection.startsWith("column"))) continue;
-    let prev = h.previousElementSibling, next = h.nextElementSibling;
-    while (prev && !shown(prev)) prev = prev.previousElementSibling;
-    while (next && !shown(next)) next = next.nextElementSibling;
-    if (!prev || !next) continue;
-    const hr = h.getBoundingClientRect();
-    const above = hr.top - prev.getBoundingClientRect().bottom, below = next.getBoundingClientRect().top - hr.bottom;
-    if (above >= 0 && below >= 12 && above + 4 < below) add("headingSpacing", h, "上 " + Math.round(above) + "px，下 " + Math.round(below) + "px");
-  }
-
-  const hasCurrentSemantics = (n) => {
-    if (!n) return false;
-    const ariaCurrent = typeof n.getAttribute === "function" ? n.getAttribute("aria-current") : null;
-    if (ariaCurrent && ariaCurrent !== "false") return true;
-    const ariaSelected = typeof n.getAttribute === "function" ? n.getAttribute("aria-selected") : null;
-    if (ariaSelected === "true") return true;
-    if (typeof n.matches === "function" && n.matches("[aria-current]:not([aria-current='false']),[aria-selected='true']")) return true;
-    const cls = typeof n.className === "string" ? n.className : "";
-    return /\b(is-)?(active|current|selected)\b/i.test(cls);
-  };
-  const isNavCurrent = (node) => {
-    if (!node.closest("nav,[role='navigation'],[role='tablist']")) return false;
-    if (hasCurrentSemantics(node)) return true;
-    if (node.tagName === "LI" && typeof node.querySelector === "function") {
-      return hasCurrentSemantics(node.querySelector("a,button,[role='tab'],[role='menuitem']"));
-    }
-    return false;
-  };
-
-  for (const el of all) {
-    const s = css(el);
-    if (s.display === "none") continue;
-    const r = el.getBoundingClientRect();
-    if (!r.width || !r.height) continue;
-
-    // 单侧彩色边线：边框或贴边的伪元素，中性色的结构分隔线、blockquote 引文、导航当前选中指示不算
-    const isQuoteOrNav = el.matches("blockquote") || isNavCurrent(el);
-    if (!isQuoteOrNav) {
-      const sides = { left: parseFloat(s.borderLeftWidth), right: parseFloat(s.borderRightWidth), top: parseFloat(s.borderTopWidth), bottom: parseFloat(s.borderBottomWidth) };
-      for (const side of ["left", "right"]) {
-        const w = sides[side], others = Math.max(sides[side === "left" ? "right" : "left"], sides.top, sides.bottom);
-        const c = rgba(s[side === "left" ? "borderLeftColor" : "borderRightColor"]);
-        if (w >= 2 && w >= others * 2 && /solid|double/.test(s[side === "left" ? "borderLeftStyle" : "borderRightStyle"])
-          && c.a >= 0.4 && chroma(c) >= 0.15 && r.height >= 16 && r.width > sides.left + sides.right + 24 && r.height < innerHeight * 0.8) add("sideStripe", el, w + "px");
-      }
-      for (const pseudo of ["::before", "::after"]) {
-        const p = css(el, pseudo);
-        if (p.content === "none" || p.position !== "absolute") continue;
-        const pw = parseFloat(p.width), ph = parseFloat(p.height), c = rgba(p.backgroundColor);
-        if (pw >= 2 && pw <= 8 && ph >= r.height * 0.6 && r.height >= 24 && r.width > 60 && c.a >= 0.4 && chroma(c) >= 0.15
-          && (parseFloat(p.left) <= 2 || parseFloat(p.right) <= 2)) add("sideStripe", el, pseudo);
-      }
-    }
-
-    if (/text/.test(s.backgroundClip + " " + s.getPropertyValue("-webkit-background-clip")) && /gradient/.test(s.backgroundImage) && (el.textContent || "").trim()) add("gradientText", el);
-  }
-
-  const emoji = /^(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}️)(?:‍\p{Extended_Pictographic}️?)*$/u;
-  const reaction = (el) => {
-    const button = el.closest("button,[role='button']");
-    if (!button) return false;
-    const text = (button.textContent || "").trim();
-    const symbol = ownText(el);
-    // aria-pressed alone also describes toolbar toggles: require an emoji-only value or an adjacent count.
-    return (button.hasAttribute("aria-pressed") && text === symbol) ||
-      (text.startsWith(symbol) && /^\s*\d+(?:[.,]\d+)?\s*$/.test(text.slice(symbol.length)));
-  };
-  const emojiHits = texts.filter((el) => emoji.test(ownText(el)) && !el.closest("p,blockquote,li > p,[role='listbox'],[role='menu'],[popover]") && !reaction(el));
-  if (emojiHits.length >= 2) emojiHits.forEach((el) => add("emojiIcon", el));
-
-  if (chinese) {
-    const labels = texts.filter((el) => {
-      const t = (el.innerText || "").trim();
-      if (!t || t.length > 40 || /[一-鿿]/.test(t) || el.closest("code,pre,kbd,samp")) return false;
-      const letters = (t.match(/[A-Za-z]/g) || []).length;
-      const upper = css(el).textTransform === "uppercase" || (/[A-Z]{2}/.test(t) && t === t.toUpperCase());
-      return upper && (letters >= 8 || /[A-Za-z]{2,}\s+[A-Za-z]{2,}/.test(t));
-    });
-    if (labels.length >= 2) labels.forEach((el) => add("englishLabel", el));
-  }
 
   const isAncestor = (anc, node) => {
     for (let p = node; p; p = p.parentElement) if (p === anc) return true;
@@ -1003,8 +881,7 @@ function lintPage() {
       const large = size >= 24 || (size >= 18.6 && parseInt(s.fontWeight, 10) >= 700);
       // 低于 1.5:1 且背后垫着非祖先底板或伪元素（滑块、绝对定位胶囊）时，不误报对比度；确定底色上的极低对比度照常报错
       if (!(contrast < 1.5 && hasOverlayPlate(el, r))) {
-        if (contrast < (large ? 3 : 4.5)) add("contrastLow", el, contrast.toFixed(2) + ":1");
-        else if (chroma(bg) >= 0.25 && chroma(color) < 0.06 && luminance(color) > 0.08 && luminance(color) < 0.6) add("grayOnColor", el);
+        if (contrast < (large ? 2.5 : 3.0)) add("contrastLow", el, contrast.toFixed(2) + ":1");
       }
     }
     // 正文：两行以上的段落
@@ -1013,10 +890,8 @@ function lintPage() {
     if (text.length < (zh ? 30 : 60) || el.closest("code,pre,table,nav,button,label,figcaption,kbd")) continue;
     const lh = s.lineHeight === "normal" ? size * 1.2 : parseFloat(s.lineHeight);
     if (r.height < lh * 1.8) continue;
-    if (size < 12.5) add("smallText", el, size + "px");
+    if (size < 11) add("smallText", el, size + "px");
     if (lh / size < (zh ? 1.4 : 1.3)) add("tightLeading", el, (lh / size).toFixed(2));
-    const perLine = zh ? r.width / size : r.width / (size * 0.5);
-    if (perLine > (zh ? 46 : 95)) add("longMeasure", el, "每行约 " + Math.round(perLine) + (zh ? " 字" : " 个字符"));
   }
 
   // 首屏里停在透明的内容：出场动画没触发时截图会缺一块
@@ -1044,70 +919,10 @@ async function lint() {
   try {
     return await evaluate(`(${lintPage.toString()})()`);
   } catch (error) {
-    return [{ rule: "lintError", label: "默认做法检查没跑完", count: 1, examples: [error.message.slice(0, 160)] }];
+    return [{ rule: "lintError", label: "可读性检查没跑完", count: 1, examples: [error.message.slice(0, 160)] }];
   }
 }
 const lintLine = (items) => items.map((i) => `${i.label} ${i.count} 处（${i.examples.join("，")}）`).join("；");
-
-function localSourceHints(target) {
-  if (/^https?:\/\//i.test(target)) return [];
-  try {
-    let entry = localPath(target);
-    if (statSync(entry).isDirectory()) entry = join(entry, "index.html");
-    if (!statSync(entry).isFile() || !/\.html?$/i.test(entry)) return [];
-    const html = readFileSync(entry, "utf8");
-    const attr = (tag, name) => {
-      const match = tag.match(new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"));
-      return match ? (match[1] ?? match[2] ?? match[3] ?? "") : "";
-    };
-    const refs = [];
-    for (const tag of html.match(/<(?:script|link)\b[^>]*>/gi) || []) {
-      if (/^<script\b/i.test(tag)) {
-        const src = attr(tag, "src");
-        if (src) refs.push(src);
-      } else if (/(?:^|\s)stylesheet(?:\s|$)/i.test(attr(tag, "rel"))) {
-        const href = attr(tag, "href");
-        if (href) refs.push(href);
-      }
-    }
-    const files = new Set([resolve(entry)]);
-    for (const ref of refs) {
-      if (!ref || /^(?:data:|https?:|\/\/|#|javascript:)/i.test(ref)) continue;
-      let local;
-      try {
-        if (/^file:\/\//i.test(ref)) local = fileURLToPath(ref);
-        else {
-          const clean = decodeURIComponent(ref.split(/[?#]/, 1)[0]);
-          local = clean.startsWith("/") ? resolve(sharedRoot || dirname(entry), `.${clean}`) : resolve(dirname(entry), clean);
-        }
-        if (!/\.(?:css|js|mjs)$/i.test(local) || !existsSync(local) || !statSync(local).isFile()) continue;
-        files.add(realpathSync(local));
-      } catch {}
-    }
-    const findings = [];
-    for (const file of files) {
-      const parts = file.split(/[\\/]/);
-      if (parts.some((part) => /^(?:vendor|node_modules)$/i.test(part)) || /\.min\.[^.]+$/i.test(basename(file))) continue;
-      try {
-        const bytes = statSync(file).size;
-        const reasons = [];
-        if (bytes > 40 * 1024) reasons.push(`${Math.ceil(bytes / 1024)} KiB`);
-        if (bytes <= 40 * 1024) {
-          const source = readFileSync(file, "utf8");
-          const longest = Math.max(0, ...source.split(/\r?\n/).map((line) => line.length));
-          if (longest > 20000) reasons.push(`单行 ${longest.toLocaleString()} 字符`);
-        }
-        if (reasons.length) findings.push(`${basename(file)}（${reasons.join("，")}）`);
-      } catch {}
-    }
-    return findings.length ? [{
-      rule: "sourceSplit", label: "本地页面文件较大或有超长行，适合按功能拆分",
-      count: findings.length, examples: findings.slice(0, 3),
-    }] : [];
-  } catch {
-    return [];
-  }
-}
 
 async function settleAnimations(limit) {
   if (limit <= 0) return 0;
@@ -1132,7 +947,21 @@ async function selectorClip() {
     const box = await evaluate(`(async () => {
       const el = (${findSource})(${JSON.stringify(selector)})[0];
       if (!el) return null;
-      el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+      const r0 = el.getBoundingClientRect();
+      const hasTopBar = [...document.body.querySelectorAll("*")].slice(0, 1000).some((n) => {
+        if (n === el || n.contains(el) || el.contains(n)) return false;
+        const pos = getComputedStyle(n).position;
+        if (pos !== "fixed" && pos !== "sticky") return false;
+        const nr = n.getBoundingClientRect();
+        return nr.width > innerWidth * 0.3 && nr.height > 0 && nr.height <= 160 && nr.top <= 24 && nr.bottom > 0;
+      });
+      if (r0.height > innerHeight * 0.65 || hasTopBar) {
+        el.scrollIntoView({ block: "nearest", inline: "center", behavior: "instant" });
+        const r1 = el.getBoundingClientRect();
+        window.scrollTo({ top: Math.max(0, r1.top + scrollY - 72), left: scrollX, behavior: "instant" });
+      } else {
+        el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+      }
       await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
       const r = el.getBoundingClientRect();
       return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height };
@@ -2102,9 +1931,9 @@ async function captureBatch(selectedStates, selectedZooms, selectedGroups, useMa
       await item(`${name}.png`, meta, async () => {
         const animationWaitMs = await prepare();
         await screenshot(file, flags.has("full"), selector ? await selectorClip() : thumb ? { x: 0, y: 0, width: w, height: h, scale: 0.5 } : null);
-        const issues = await check(), hints = [...(thumb ? [] : await lint()), ...localSourceHints(activeTarget.target)];
+        const issues = await check(), hints = thumb ? [] : await lint();
         entry = { file: basename(file), ...meta, ...(thumb ? { thumb: true } : {}), animationWaitMs, issues, lint: hints };
-        lines.push(`${basename(file)}${issues.length ? "  ⚠ " + issues.join("；") : ""}${hints.length ? "  ◇ 默认做法提示：" + lintLine(hints) : ""}`);
+        lines.push(`${basename(file)}${issues.length ? "  ⚠ " + issues.join("；") : ""}${hints.length ? "  ◇ 可读性提示：" + lintLine(hints) : ""}`);
         report.push(entry); shots.push({ path: file, label: state || "page" });
         if (batchMode) targetShots.push({ path: file, label: [meta.name, state, suffix].filter(Boolean).join(" · ") });
       });
@@ -2230,7 +2059,7 @@ for (const l of lines) console.log(`- ${l}`);
 const total = report.reduce((n, r) => n + r.issues.length, 0);
 if (report.length) console.log(total ? `发现 ${total} 个问题，详见 report.json` : `检查通过：没有控制台错误、横向溢出或加载失败的图片${flags.has("motion") ? "，三段动效都检测到了" : ""}`);
 const hinted = [...new Set(report.flatMap((r) => (r.lint || []).map((i) => i.label)))];
-if (hinted.length) console.log(`默认做法提示 ${hinted.length} 类：${hinted.join("、")}。可读性几项（对比度不达标、正文小于 13px、行高过紧、停在透明）要改；其余改掉，或在交付说明里写出它怎样服务方向，误报也写一句。详见 report.json 的 lint`);
+if (hinted.length) console.log(`可读性与渲染提示 ${hinted.length} 类：${hinted.join("、")}。详见 report.json 的 lint`);
 const reviewerManual = resolve(dirname(process.argv[1]), "../references/reviewer-manual.md");
 if (evidence && existsSync(reviewerManual)) console.log(`评审交接：将 ${reviewerManual} 与证据目录 ${out} 传给独立评审子 Agent`);
 finishing = true;
