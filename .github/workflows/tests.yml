@@ -20,6 +20,8 @@ jobs:
     outputs:
       browser: ${{ steps.select_browser.outputs.browser }}
     steps:
+      - name: 换行符保持原样
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -44,6 +46,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
+      - name: 换行符保持原样
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
