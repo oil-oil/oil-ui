@@ -10,9 +10,16 @@ import io
 import json
 import math
 import struct
+import sys
 import zlib
 from pathlib import Path
 from statistics import median
+
+
+def utf8_output() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
 
 try:
     from PIL import Image, ImageFilter
@@ -467,6 +474,7 @@ def parse_spec(spec: str, kind: str, extra: dict | None = None) -> dict:
 
 
 def main(argv=None) -> int:
+    utf8_output()
     parser = argparse.ArgumentParser(
         description=__doc__,
         epilog=HELP_EXAMPLES,
