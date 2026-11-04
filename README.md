@@ -1,4 +1,4 @@
-English · [中文](README.zh-CN.md)
+English · [中文](README.zh-CN.md) · [日本語](README.ja.md)
 
 <p align="center">
   <img src="./assets/readme/hero.en.webp" width="100%" alt="oil-ui: push AI UI design to its limits. A person pins a yellow pushpin to the middle of three previews in different styles">

@@ -1,4 +1,4 @@
-[English](README.md) · 中文
+[English](README.md) · 中文 · [日本語](README.ja.md)
 
 <p align="center">
   <img src="./assets/readme/hero.webp" width="100%" alt="oil-ui：把 AI 的 UI 设计能力推到极限。插画里的人把黄色图钉按在三张风格不同的小样中间那张上">
