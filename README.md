@@ -83,6 +83,7 @@ The open-source version takes a new page from a blank start to a good-looking de
 | Usability: interactions and states, forms, dialogs and popovers, desktop and mobile layouts | | ✓ |
 | Dashboards and tools: workspace layouts chosen for the product, with one style throughout | | ✓ |
 | Existing projects: separate approaches for a UI refresh, a flow fix, and a new feature | Tells you which one you need | ✓ |
+| Prototype to production code: a mapping table, built with the project's own components and libraries, checked side by side against the prototype | Doesn't paste the prototype's code wholesale | ✓ |
 | Design system: record DESIGN.md for new projects, merge conflicting rules into one | Points out the conflicts | ✓ |
 | From one page to a full set: page map, a reference page per page type, cross-page consistency checks, splitting work across agents | | ✓ |
 | Revisions: turn "make it feel more premium" into concrete changes, before/after for every round, keep confirmed parts intact, say when the direction itself is wrong | | ✓ |
