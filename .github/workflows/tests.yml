@@ -1,7 +1,6 @@
 name: tests
 
-# 公开版核心测试按操作系统验证；真实浏览器测试按 Chrome / Edge 和区域设置分层。
-# PR 只有文档变化时跳过浏览器矩阵；脚本、测试、浏览器资源和工作流变化，以及 main / 手动运行仍执行完整矩阵。
+# PR 与 main push 只跑 Linux；发版前手动 dispatch 才追加 Windows 套件。
 on:
   push:
     branches: [main]
@@ -11,40 +10,55 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: tests-${{ github.ref }}
+  group: tests-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
   select:
+    name: select
     runs-on: ubuntu-latest
     outputs:
-      browser: ${{ steps.select_browser.outputs.browser }}
+      core_matrix: ${{ steps.select_matrix.outputs.core_matrix }}
+      browser_matrix: ${{ steps.select_matrix.outputs.browser_matrix }}
+      browser: ${{ steps.select_matrix.outputs.browser }}
     steps:
       - name: 换行符保持原样
         run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - id: select_browser
+      - id: select_matrix
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
-            echo "browser=1" >> "$GITHUB_OUTPUT"
-          elif git diff --name-only origin/main...HEAD | grep -E '^(scripts/|tests/|assets/|\.github/workflows/tests\.yml$)' >/dev/null; then
-            echo "browser=1" >> "$GITHUB_OUTPUT"
+          linux_core='[{"name":"linux","os":"ubuntu-latest"}]'
+          full_core='[{"name":"linux","os":"ubuntu-latest"},{"name":"windows","os":"windows-latest"}]'
+          linux_browser='[{"name":"browser linux · chrome","os":"ubuntu-latest","locale":""},{"name":"browser linux · chrome · GBK","os":"ubuntu-latest","locale":"zh_CN.GBK"}]'
+          full_browser='[{"name":"browser linux · chrome","os":"ubuntu-latest","locale":""},{"name":"browser linux · chrome · GBK","os":"ubuntu-latest","locale":"zh_CN.GBK"},{"name":"browser windows · chrome · dark","os":"windows-latest","theme":"dark","node":24},{"name":"browser windows · edge","os":"windows-latest","browser":"edge"}]'
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            core="$full_core"; browser_matrix="$full_browser"; browser=1
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            core="$linux_core"
+            if git diff --name-only "${{ github.event.pull_request.base.sha }}...HEAD" | grep -E '^(scripts/|tests/|assets/|references/|\.github/workflows/tests\.yml$)' >/dev/null; then
+              browser_matrix="$linux_browser"; browser=1
+            else
+              browser_matrix='[]'; browser=0
+            fi
           else
-            echo "browser=0" >> "$GITHUB_OUTPUT"
+            core="$linux_core"; browser_matrix="$linux_browser"; browser=1
           fi
+          echo "core_matrix=$core" >> "$GITHUB_OUTPUT"
+          echo "browser_matrix=$browser_matrix" >> "$GITHUB_OUTPUT"
+          echo "browser=$browser" >> "$GITHUB_OUTPUT"
 
   core:
-    name: ${{ matrix.os }} · 核心测试
+    name: core ${{ matrix.name }}
     needs: select
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include: ${{ fromJSON(needs.select.outputs.core_matrix) }}
     steps:
       - name: 换行符保持原样
         run: git config --global core.autocrlf false
@@ -60,8 +74,11 @@ jobs:
         run: |
           python - <<'PY'
           import os, sys, unittest
+          from pathlib import Path
           sys.path.insert(0, os.path.abspath("tests"))
-          modules = ["test_check_update", "test_measure_reference", "test_oiloil_image", "test_curate_media", "test_workdir"]
+          browser_modules = {"test_build_explorer", "test_prep_image", "test_shoot"}
+          modules = [path.stem for path in sorted(Path("tests").glob("test_*.py"))
+                     if path.stem not in browser_modules]
           suite = unittest.defaultTestLoader.loadTestsFromNames(modules)
           result = unittest.TextTestRunner(verbosity=2).run(suite)
           sys.exit(not result.wasSuccessful())
@@ -76,13 +93,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { name: "linux · chrome", os: ubuntu-latest }
-          - { name: "linux · chrome · GBK", os: ubuntu-latest, locale: zh_CN.GBK }
-          - { name: "windows · chrome · 深色主题", os: windows-latest, theme: dark, node: 24 }
-          - { name: "windows · edge", os: windows-latest, browser: edge }
+        include: ${{ fromJSON(needs.select.outputs.browser_matrix) }}
     env:
-      # 托管机器只有两个核、用软件渲染，抓不住 0.36 秒的反馈，那一条实时取帧的测试只在本机跑。
       OIL_SHOOT_SLOW_HOST: "1"
     steps:
       - name: 换行符保持原样
@@ -101,7 +113,7 @@ jobs:
           sudo apt-get install -y -q ffmpeg fonts-noto-cjk
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Linux：换成 GBK 区域设置
-        if: matrix.locale
+        if: matrix.locale != ''
         run: |
           sudo locale-gen ${{ matrix.locale }}
           echo "OIL_TEST_LOCALE=${{ matrix.locale }}" >> "$GITHUB_ENV"
@@ -125,9 +137,6 @@ jobs:
           "CHROME_PATH=$edge" >> $env:GITHUB_ENV
           Write-Output "Edge $((Get-Item $edge).VersionInfo.ProductVersion)"
       - name: 运行浏览器相关测试
-        # 模拟中文 Windows 的默认文本编码，保留 Unicode 文件系统与 Node argv。
-        # 若在 Python 启动前把整个 Linux locale 换成 GBK，文件名和参数会先被
-        # 编成 GBK 字节；Node 按 UTF-8 读取后损坏，反而不是 Windows 的行为。
         shell: bash
         run: |
           python - <<'PY'
