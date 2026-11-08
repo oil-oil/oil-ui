@@ -5,10 +5,10 @@
 </p>
 
 <p align="center">
-  <a href="https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en"><img src="./assets/readme/showcase.en.webp" width="100%" alt="ギャラリーのハイライト：英語学習アプリ、音楽の年間まとめ、ハードウェアとコンポーネントライブラリの Web サイト、プロジェクト管理ツール、配車アプリ、音声アシスタント、チェックアウトのフロー、フィルムカメラ"></a>
+  <a href="https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja"><img src="./assets/readme/showcase.en.webp" width="100%" alt="ギャラリーのハイライト：英語学習アプリ、音楽の年間まとめ、ハードウェアとコンポーネントライブラリの Web サイト、プロジェクト管理ツール、配車アプリ、音声アシスタント、チェックアウトのフロー、フィルムカメラ"></a>
 </p>
 
-Oil UI は、AI エージェントのためのインターフェースデザインのスキルです。1 つの方向性を推奨して実際のスクリーンショットをもとに磨き上げるか、比較を求められた場合は複数の方向性を並べて検討します。Web サイト、アプリ、ダッシュボード、コンポーネントに使えます。その他のデザインは [ui.oiloil.org](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en) でご覧いただけます。
+Oil UI は、AI エージェントのためのインターフェースデザインのスキルです。1 つの方向性を推奨して実際のスクリーンショットをもとに磨き上げるか、比較を求められた場合は複数の方向性を並べて検討します。Web サイト、アプリ、ダッシュボード、コンポーネントに使えます。その他のデザインは [ui.oiloil.org](https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja) でご覧いただけます。
 
 ## デザインの進め方
 
@@ -21,14 +21,14 @@ Oil UI は、AI エージェントのためのインターフェースデザイ�
 7. **何がよいかを決めるのはあなたです。** デフォルトでは、1 つの方向性を推奨して、あなたの確認を求めます。比較を求めた場合は、プレビューが 1 つの比較ページにまとめられます。あなたが 1 つを選んで好きな点と嫌いな点を伝えると、そのフィードバックに沿ってデザインを詰めてから先に進みます。
 8. **実際の画面を信頼する。** ページが完成したら、デスクトップとモバイルのサイズで開いて、スクリーンショットを確認します。作業途中を見ていないレビュアーを呼ぶこともできます。最後に、引き算のラウンドを行います：ページごとにフォーカスは 1 つにし、理解の助けにならないコピー、線、ボックスは残しません。
 
-より使いやすいインターフェース、既存のプロジェクトのリデザイン、光の軌跡やドットパターンのようなエフェクトについては、[Oil UI Pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en) をご覧ください。違いは[下記](#オープンソース版と-pro)にまとめています。
+より使いやすいインターフェース、既存のプロジェクトのリデザイン、光の軌跡やドットパターンのようなエフェクトについては、[Oil UI Pro](https://ui.oiloil.org/ja/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja) をご覧ください。違いは[下記](#オープンソース版と-pro)にまとめています。
 
 ## インストール
 
 スキルをインストールできるエージェントに、次のように伝えてください：
 
 ```text
-Install this skill for me: run npx skills add oil-oil/oil-ui
+次のコマンドを実行してこのスキルをインストールしてください：npx skills add oil-oil/oil-ui
 ```
 
 または、ターミナルで次を実行してください：
@@ -83,6 +83,7 @@ DeepSeek Harness を使っている場合は、ネイティブのプラグイン
 | 使いやすさ：インタラクションと状態、フォーム、ダイアログとポップオーバー、デスクトップとモバイルのレイアウト | | ✓ |
 | ダッシュボードとツール：プロダクトに合わせて選んだワークスペースのレイアウトと、全体を通した 1 つのスタイル | | ✓ |
 | 既存のプロジェクト：UI の刷新、フローの修正、新機能の追加それぞれに別のアプローチ | どれが必要かを教えてくれます | ✓ |
+| プロトタイプから本番コードへ：対応表を作り、プロジェクト自身のコンポーネントとライブラリで実装し、プロトタイプと並べて確認 | プロトタイプのコードを丸ごと貼り付けません | ✓ |
 | デザインシステム：新しいプロジェクトでは DESIGN.md に記録し、矛盾するルールを 1 つに統合 | 矛盾を指摘します | ✓ |
 | 1 ページから一式へ：ページマップ、ページの種類ごとの参照ページ、ページ間の一貫性のチェック、エージェント間での作業の分担 | | ✓ |
 | 修正：「もっと上質な感じに」を具体的な変更に落とし込み、毎回のビフォー/アフター、確定した部分の維持、方向性そのものが間違っているときはそう伝える | | ✓ |
@@ -91,7 +92,7 @@ DeepSeek Harness を使っている場合は、ネイティブのプラグイン
 | 光の軌跡、ドットパターン、流れるグラデーションなどのエフェクト | | ✓ |
 | ミニゲームのシーンのレイアウト、ビジュアル、状態のチェック | | ✓ |
 
-Oil UI Pro は $9.99 です：一度の購入で、生涯アップデートを受けられます。[ui.oiloil.org/pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en) でご購入いただけます。
+Oil UI Pro は $9.99 です：一度の購入で、生涯アップデートを受けられます。[ui.oiloil.org/pro](https://ui.oiloil.org/ja/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja) でご購入いただけます。
 
 ## バージョンの確認
 
