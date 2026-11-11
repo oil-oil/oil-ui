@@ -797,6 +797,70 @@ fetch('../shared.txt').then(r=>r.text()).then(t=>{{if(t!=='shared')console.error
         self.assertEqual(struct.unpack(">II", (output / "page.png").read_bytes()[16:24]), (720, 450))
         self.assert_no_browser_leftovers()
 
+    def test_local_query_hash_survive_preview_query_states_and_batch_names(self):
+        site = self.folder / 'local space % #'
+        site.mkdir()
+        page = site / 'index.html'
+        page.write_text('''<!doctype html><meta charset="utf-8"><link rel="icon" href="data:,">
+<p>Local address probe</p><script>
+const q=new URLSearchParams(location.search);
+if(q.get('season')!=='summer' || q.getAll('tag').join('|')!=='one|two' ||
+   q.get('escaped')!=='a+b&#?' || q.get('extra')!=='two words' ||
+   q.get('override')!=='new' || q.getAll('multi').join('|')!=='x|y' ||
+   !['idle','done'].includes(q.get('state')) || location.hash!=='#top%20detail') console.error('ADDRESS_LOST');
+console.error('ADDRESS_OK:'+q.get('state'));
+</script>''', encoding='utf-8')
+        # Relative paths treat percent signs literally; file URLs decode them only in the path.
+        relative_page = site / 'relative %.html'
+        relative_page.write_bytes(page.read_bytes())
+        suffix = '?season=summer&tag=one&tag=two&escaped=a%2Bb%26%23%3F&override=old&state=old#top%20detail'
+        targets = [page.as_uri() + suffix, os.path.relpath(relative_page, ROOT) + suffix]
+        output = self.folder / 'address-merge'
+        self.shoot_targets(output, targets, '--root', str(self.folder), '--size', '800x600', '--no-sheet',
+                           '--query', 'extra=two+words&override=new&multi=x&multi=y', '--states', 'idle,done')
+        report = json.loads((output / 'report.json').read_text(encoding='utf-8'))
+        self.assertEqual([r['file'] for r in report],
+                         ['index-idle.png', 'index-done.png', 'relative %-idle.png', 'relative %-done.png'])
+        for entry, state in zip(report, ['idle', 'done', 'idle', 'done']):
+            self.assertEqual(entry['issues'], ['控制台错误：ADDRESS_OK:' + state])
+            self.assertEqual(entry['lint'], [])
+        self.assert_artifacts(output, [r['file'] for r in report])
+
+    def test_local_query_hash_are_preserved_without_merge_and_in_manifest(self):
+        self.page.write_text('''<!doctype html><link rel="icon" href="data:,"><p>Raw address probe</p><script>
+console.error(location.search+location.hash);
+</script>''', encoding='utf-8')
+        suffix = '?season=summer&raw=a%20b&raw=%2f%3f#top%20detail'
+        relative_suffix = suffix.replace('?', '?source=relative&', 1)
+        output = self.folder / 'raw-address'
+        self.shoot_targets(output, [self.page.as_uri() + suffix, os.path.relpath(self.page, ROOT) + relative_suffix], '--no-sheet')
+        report = json.loads((output / 'report.json').read_text(encoding='utf-8'))
+        self.assertEqual([r['file'] for r in report], ['sample.png', 'sample-2.png'])
+        self.assertEqual([r['issues'] for r in report], [['控制台错误：' + value] for value in (suffix, relative_suffix)])
+        manifest = self.folder / 'manifest.json'
+        manifest.write_text(json.dumps({'candidates': [{'source': 'sample.html' + suffix}]}), encoding='utf-8')
+        output = self.folder / 'manifest-address'
+        self.shoot_targets(output, [manifest])
+        entry = json.loads((output / 'report.json').read_text(encoding='utf-8'))[0]
+        self.assertEqual(entry['file'], 'sample.png')
+        self.assertEqual(entry['issues'], ['控制台错误：' + suffix])
+
+    def test_local_query_hash_do_not_bypass_explicit_root(self):
+        root = self.folder / 'allowed'
+        root.mkdir()
+        link = root / 'escape.html'
+        link.symlink_to(self.page)
+        for page in (self.page, link):
+            for address in (page.as_uri(), os.path.relpath(page, ROOT)):
+                with self.subTest(address=address):
+                    result = subprocess.run([NODE, str(SCRIPT), address + '?season=summer#top', '--root', str(root),
+                                             '--out', str(self.folder / 'denied')], cwd=ROOT, env=self.env,
+                                            capture_output=True, text=True, timeout=20, encoding='utf-8')
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn('本地目标不在 --root 内', result.stderr)
+                    self.assertNotIn('找不到文件', result.stderr)
+        self.assert_no_browser_leftovers()
+
     def test_preview_denies_sibling_paths_and_escaping_symlinks(self):
         outside = Path(str(self.folder) + '-private')
         outside.mkdir()
@@ -1271,6 +1335,232 @@ nav a.active::before{content:"";position:absolute;left:0;top:4px;width:3px;heigh
         output = self.folder / "clean"
         self.shoot(output, "--size", "1280x800")
         self.assertEqual(json.loads((output / "report.json").read_text(encoding="utf-8"))[0]["lint"], [])
+
+    def lint_fixture(self, markup, style='', size='1000x900'):
+        self.page.write_text('''<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><style>
+body{margin:0;padding:24px;background:white;color:#111;font:16px/1.6 sans-serif}
+''' + style + '</style></head><body>' + markup + '</body></html>', encoding='utf-8')
+        output = self.folder / 'lint-fixture'
+        self.shoot(output, '--size', size)
+        entry = json.loads((output / 'report.json').read_text(encoding='utf-8'))[0]
+        return {item['rule']: item for item in entry['lint']}
+
+    def test_lint_samples_first_text_rect_and_real_sibling_paint_order(self):
+        hints = self.lint_fixture('''
+<div class="narrow"><span id="escaped">Outside narrow parent</span></div>
+<div class="stage"><div class="plate"></div><p id="wide" class="label">Bright label</p></div>
+<div class="stage"><p id="low" class="label" style="color:#222">Dark label</p><div class="plate"></div></div>
+<div class="stage"><div class="plate" style="background:rgba(0,0,0,.85)"></div><p class="label">Alpha plate</p></div>
+<div class="stage"><div class="plate" style="z-index:2;background:rgba(255,255,255,.8)"></div>
+<div class="plate"></div><p class="label" style="z-index:3;color:#111">Layer order</p></div>
+''', '''
+.narrow{position:relative;width:12px;height:48px;background:#111}
+#escaped{position:absolute;left:80px;top:0;white-space:nowrap;color:#111}
+.stage{position:relative;width:900px;height:60px;margin-top:12px}
+.plate{position:absolute;left:0;top:0;width:260px;height:48px;background:#111;z-index:1}
+.label{position:relative;z-index:2;margin:0;width:850px;color:white}
+''')
+        self.assertEqual(set(hints), {'contrastLow'})
+        self.assertEqual(hints['contrastLow']['count'], 1)
+        self.assertIn('p#low', hints['contrastLow']['examples'][0])
+
+    def test_lint_unknown_media_and_gradients_stop_at_opaque_plates(self):
+        image = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%2260%22%3E%3Cpath fill=%22black%22 d=%22M0 0h400v60H0z%22/%3E%3C/svg%3E'
+        media = [f"<img class='media' src='{image}'>", '<video class="media"></video>',
+                 '<canvas class="media" width="400" height="60"></canvas>',
+                 '<div class="media" style="background:linear-gradient(black,white)"></div>',
+                 f"<div class='media' style='background-image:url(\"{image}\")'></div>",
+                 f"<img class='media' style='width:100px;height:19px' src='{image}'>"]
+        markup = ''.join('<div class="stage">' + item + '<p class="label">Unknown surface</p></div>' for item in media)
+        markup += f'''<div class="stage"><img class="media" src='{image}'><div class="opaque"></div>
+<p class="label" id="known-plate">Known white plate</p></div>
+<div class="stage"><img class="media" style="left:200px;width:200px" src='{image}'>
+<p class="label" id="media-away">Left text</p></div>'''
+        hints = self.lint_fixture(markup, '''
+.stage{position:relative;width:800px;height:85px}.media{position:absolute;left:0;top:0;width:400px;height:60px}
+.opaque{position:absolute;inset:0;width:400px;height:60px;background:white;z-index:1}
+.label{position:relative;z-index:2;margin:0;color:#eee}
+''')
+        self.assertEqual(set(hints), {'contrastLow'})
+        self.assertEqual(hints['contrastLow']['count'], 2)
+        self.assertIn('#known-plate', hints['contrastLow']['examples'][0])
+        self.assertIn('#media-away', hints['contrastLow']['examples'][1])
+
+    def test_lint_preserves_before_and_after_pseudo_plate_exemptions(self):
+        hints = self.lint_fixture('''<div class="before">Before plate</div><div class="after">After plate</div>
+<div class="before gradient">Unknown pseudo gradient</div>''', '''
+.before,.after{position:relative;display:inline-block;padding:8px 16px;color:white}
+.before::before,.after::after{content:"";position:absolute;inset:0;background:#111;border-radius:8px;z-index:-1}
+.gradient{color:#aaa}.gradient::before{background:linear-gradient(black,#333)}
+''')
+        self.assertEqual(hints, {})
+
+    def test_lint_small_text_covers_short_ui_labels_and_spares_exceptions(self):
+        hints = self.lint_fixture('''
+<nav><a class="tiny" id="nav">Home</a></nav><label class="tiny" id="label">Email</label>
+<button class="tiny" id="button">Go</button><span class="tiny">AB</span><p class="tiny">Short body</p>
+<code class="tiny">Code</code><table><tr><td class="tiny">Cell</td></tr></table>
+<div style="transform:translateX(1px)"><span class="tiny">Translated</span></div>
+<span style="font-size:10.99px">Below boundary</span><span style="font-size:11px">At boundary</span>
+<span class="tiny">A<b style="font-size:16px">BC</b></span>
+<sup class="tiny">12<span>Footnote</span></sup><sub class="tiny">12</sub>
+<svg width="60" height="30"><text font-size="8" y="12">Vector</text></svg>
+<div style="transform:scale(.5);transform-origin:top left"><span class="tiny">Thumbnail</span></div>
+<div style="transform:scale(.5)"><div><span class="tiny">Nested thumbnail</span></div></div>
+<span class="tiny" hidden>Hidden</span><span class="tiny" style="visibility:hidden">Hidden</span>
+<span class="tiny" style="opacity:0">AB</span><span class="tiny" aria-hidden="true">Hidden</span>
+''', '.tiny{font-size:10px;line-height:1;color:#111}')
+        self.assertEqual(set(hints), {'smallText'})
+        self.assertEqual(hints['smallText']['label'], '文字小于 11px')
+        self.assertEqual(hints['smallText']['count'], 9)
+        self.assertEqual(len(hints['smallText']['examples']), 3)
+        for example, expected in zip(hints['smallText']['examples'], ['a#nav', 'label#label', 'button#button']):
+            self.assertIn(expected, example)
+
+    def test_lint_skips_zero_font_icon_buttons_and_empty_text_ranges(self):
+        hints = self.lint_fixture('''
+<button class="icon">Suggest a tool<svg width="24" height="24"><path d="M2 12h20" stroke="black"/></svg></button>
+<button class="empty-range">\u200b\u200b<svg width="24" height="24"></svg></button>
+<span style="font-size:0;padding:16px;color:#eee">Hidden label</span>
+<input style="font-size:0" value="Hidden value"><textarea style="font-size:0">Hidden value</textarea>
+<span id="tiny" style="font-size:10px">Visible small label</span><p id="low" style="color:#eee">Visible low contrast</p>
+''', '''
+button{padding:16px;background:white;color:#eee}.empty-range{font-size:10px}
+@media(max-width:600px){.icon{font-size:0}}
+''', size='390x844')
+        self.assertEqual(set(hints), {'smallText', 'contrastLow'})
+        self.assertEqual(hints['smallText']['count'], 1)
+        self.assertIn('#tiny', hints['smallText']['examples'][0])
+        self.assertEqual(hints['contrastLow']['count'], 1)
+        self.assertIn('#low', hints['contrastLow']['examples'][0])
+
+    def test_lint_samples_offscreen_ancestors_only_where_the_point_is_covered(self):
+        hints = self.lint_fixture('''
+<p id="above" style="color:#aaa">Low contrast near the top</p>
+<p id="below" class="offscreen" style="top:1200px;color:#aaa">Low contrast below the fold</p>
+<div class="track"><span>Outside four pixel track</span></div>
+<div class="offscreen" style="top:1400px;background:rgba(0,0,0,.85);color:white">Readable translucent plate</div>
+<div class="offscreen" style="top:1500px;background:linear-gradient(black,white);color:#aaa">Unknown gradient</div>
+<div class="offscreen" style="top:1600px;background-image:url(data:image/svg+xml,%3Csvg/%3E);color:#aaa">Unknown image</div>
+<input id="control" class="offscreen" style="top:1700px;background:white;color:#aaa" value="Offscreen control">
+''', '''
+body{min-height:2100px}.offscreen{position:absolute;left:24px;width:400px;height:40px;margin:0}
+.track{position:absolute;left:24px;top:1300px;width:4px;height:40px;background:#111}
+.track span{position:absolute;left:24px;white-space:nowrap;color:#111}
+''')
+        self.assertEqual(set(hints), {'contrastLow'})
+        self.assertEqual(hints['contrastLow']['count'], 3)
+        for example, expected in zip(hints['contrastLow']['examples'], ['#above', '#below', '#control']):
+            self.assertIn(expected, example)
+        # After scrolling, the first two samples have cy < 0. Neither scrolling
+        # nor the fallback may erase their contrast warnings or use the narrow track.
+        output = self.folder / 'scrolled-lint'
+        self.shoot(output, '--size', '1000x900', '--steps', 'scroll 1800')
+        scrolled = json.loads((output / 'report.json').read_text(encoding='utf-8'))[0]['lint']
+        self.assertEqual(scrolled, list(hints.values()))
+
+    def test_lint_offscreen_fallback_spares_clipped_scroll_container_content(self):
+        markup = ''
+        for top in (50, 1100):
+            for index, overflow in enumerate(('hidden', 'clip', 'scroll', 'auto')):
+                markup += f'''<div class="frame" style="top:{top + index * 100}px;overflow:{overflow}">
+<span style="top:80px">Clipped vertically</span><span style="left:500px">Clipped horizontally</span></div>'''
+        markup += '<div class="frame" style="top:1700px;overflow:auto"><span id="inside">Visible inside scroller</span></div>'
+        markup += '<p style="position:absolute;top:1850px;width:4px;height:40px;overflow:hidden;white-space:nowrap;color:#eee">Clipped by own text box</p>'
+        hints = self.lint_fixture(markup, '''
+body{min-height:2000px}.frame{position:absolute;left:24px;width:400px;height:40px}
+.frame span{position:absolute;left:0;top:0;white-space:nowrap;color:#eee}
+''')
+        self.assertEqual(set(hints), {'contrastLow'})
+        self.assertEqual(hints['contrastLow']['count'], 1)
+        self.assertIn('#inside', hints['contrastLow']['examples'][0])
+
+    def test_lint_tight_leading_only_counts_long_multiline_body(self):
+        zh = '测' * 30
+        en = 'word ' * 11 + 'words'  # Exactly 60 characters.
+        self.assertEqual(len(en), 60)
+        markup = f'''<p id="zh" class="dense">{zh}</p><p id="en" class="dense">{en}</p>
+<p class="dense">{zh[:-1]}</p><p class="dense">{en[:-1]}</p>
+<p style="line-height:1">{zh}</p><p style="line-height:1">{en}</p>
+<p class="dense" style="line-height:1.4">{zh}</p><p class="dense" style="line-height:1.3">{en}</p>'''
+        markup += ''.join(f'<{tag} class="dense">{zh}</{tag}>' for tag in ('code', 'pre', 'nav', 'button', 'label', 'figcaption', 'kbd'))
+        hints = self.lint_fixture(markup, '.dense{display:block;width:85px;font-size:16px;line-height:1;margin:0}')
+        self.assertEqual(set(hints), {'tightLeading'})
+        self.assertEqual(hints['tightLeading']['count'], 2)
+        self.assertIn('p#zh', hints['tightLeading']['examples'][0])
+        self.assertIn('p#en', hints['tightLeading']['examples'][1])
+
+    def test_lint_enabled_text_controls_values_placeholders_and_small_fonts(self):
+        excluded = ('hidden', 'checkbox', 'radio', 'range', 'color', 'file', 'button', 'submit', 'reset', 'image')
+        markup = '''<input class="tiny" value="Tiny"><textarea class="tiny">Tiny</textarea>
+<select class="tiny"><option>Choice</option></select><input class="tiny">
+<input id="low-value" value="x" class="low"><textarea id="low-placeholder" placeholder="Draft"></textarea>
+<input id="low-opacity" placeholder="Search"><select class="low"><option>Selected</option></select>
+<div style="opacity:.2"><input value="Faded"></div><input style="font-size:26px;color:#999" value="Large">
+<input class="low" value="Readonly" readonly>
+<input value="Visible value" placeholder="Ignored" id="filled"><input placeholder="Good placeholder" id="good-placeholder">
+<input class="low"><textarea class="low" placeholder="   "></textarea><select><option value="">Choose</option></select>
+<input class="tiny low" value="Disabled" disabled><textarea class="tiny low" disabled>Disabled</textarea>
+<select class="tiny low" disabled><option>Disabled</option></select>
+<fieldset disabled><input class="tiny low" value="Disabled fieldset"></fieldset>
+<div aria-disabled="true"><input class="tiny low" value="ARIA disabled"></div>
+<input class="tiny low" value="Invisible" style="visibility:hidden">
+<input class="tiny low" value="Invisible" style="opacity:0">
+<div class="stage"><div class="plate"></div><input value="Bright on sibling" style="color:white"></div>
+<div class="stage"><div class="plate"></div><input value="Dark on sibling" style="color:#222"></div>
+<input value="Unknown gradient" style="color:#eee;background:linear-gradient(white,black)">'''
+        markup += ''.join(f'<input type="{kind}" class="tiny low"' + (' src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\'/%3E"' if kind == 'image' else '') + '>' for kind in excluded)
+        hints = self.lint_fixture(markup, '''
+input,textarea,select{font:16px/1.6 sans-serif;background:white;color:#111;border:1px solid #333}
+.tiny{font-size:10px}.low{color:#aaa}
+#low-placeholder::placeholder{color:#aaa;opacity:1}#low-opacity::placeholder{color:#111;opacity:.15}
+#filled::placeholder{color:#eee;opacity:1}#good-placeholder{color:#eee}#good-placeholder::placeholder{color:#111;opacity:1}
+.stage{position:relative;width:400px;height:50px}.plate{position:absolute;inset:0;background:#111}
+.stage input{position:relative;z-index:1;background:transparent}
+''')
+        self.assertEqual(set(hints), {'smallText', 'contrastLow'})
+        self.assertEqual(hints['smallText']['count'], 4)
+        self.assertEqual(hints['contrastLow']['count'], 8)
+        for example, expected in zip(hints['contrastLow']['examples'], ['#low-value', '#low-placeholder', '#low-opacity']):
+            self.assertIn(expected, example)
+
+    def test_horizontal_overflow_is_only_an_issue_with_three_visible_examples(self):
+        markup = '''<div style="width:1500px;display:none">Hidden</div>
+<div style="width:1500px;visibility:hidden">Invisible</div>
+<div style="opacity:0"><div style="width:1500px">AB</div></div>'''
+        markup += ''.join(f'<div id="wide-{i}" class="wide" style="width:{1100+i*10}px">Wide row</div>' for i in range(4))
+        hints = self.lint_fixture(markup)
+        self.assertEqual(hints, {})
+        entry = json.loads((self.folder / 'lint-fixture/report.json').read_text(encoding='utf-8'))[0]
+        self.assertEqual(len(entry['issues']), 1)
+        issue = entry['issues'][0]
+        self.assertRegex(issue, r'^横向溢出：页面宽 \d+px，视口 1000px')
+        self.assertEqual(issue.count('超出 '), 3)
+        for index in range(3):
+            self.assertIn(f'div#wide-{index}.wide 超出 {124 + index * 10}px', issue)
+        self.assertNotIn('#wide-3', issue)
+
+    def test_overflow_spares_root_clipping_local_carousels_and_two_pixels(self):
+        self.page.write_text('''<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,"><style>
+html,body{margin:0;font:16px/1.6 sans-serif;color:#111;background:white}
+.carousel{width:300px;overflow-x:auto}.carousel.scroll{overflow-x:scroll}.track{width:1400px}
+.bleed{width:1002px}
+</style><div class="carousel"><div class="track">Local carousel</div></div>
+<div class="carousel scroll"><div class="track">Local scroll</div></div><div class="bleed">Two pixel tolerance</div>
+<script>const state=new URLSearchParams(location.search).get('state');
+if(state && state!=='local') {
+  const [tag,overflow]=state.split('-');document.querySelector(tag).style.overflowX=overflow;
+  document.querySelector('.bleed').style.width='1400px';
+}</script>''', encoding='utf-8')
+        output = self.folder / 'safe-overflow'
+        self.shoot(output, '--size', '1000x900', '--states', 'local,html-hidden,html-clip,body-hidden,body-clip')
+        report = json.loads((output / 'report.json').read_text(encoding='utf-8'))
+        self.assertEqual(len(report), 5)
+        for entry in report:
+            self.assertEqual(entry['lint'], [], entry)
+            self.assertEqual(entry['issues'], [], entry)
 
     def test_compare_against_reference(self):
         reference = self.folder / "reference"
