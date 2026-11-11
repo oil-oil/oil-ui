@@ -518,9 +518,9 @@ document.querySelector('#go').onclick = () => show(document.body.dataset.state =
                 elif artifact.suffix == ".jpg":
                     self.assertTrue(artifact.read_bytes().startswith(b"\xff\xd8"), name)
 
-    def shoot_targets(self, output, targets, *args):
+    def shoot_targets(self, output, targets, *args, cwd=ROOT):
         result = subprocess.run([NODE, str(SCRIPT), *map(str, targets), '--out', str(output), *args],
-                                cwd=ROOT, env=self.env, capture_output=True, text=True, timeout=90, encoding='utf-8')
+                                cwd=cwd, env=self.env, capture_output=True, text=True, timeout=90, encoding='utf-8')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         return result
 
@@ -814,10 +814,11 @@ console.error('ADDRESS_OK:'+q.get('state'));
         relative_page = site / 'relative %.html'
         relative_page.write_bytes(page.read_bytes())
         suffix = '?season=summer&tag=one&tag=two&escaped=a%2Bb%26%23%3F&override=old&state=old#top%20detail'
-        targets = [page.as_uri() + suffix, os.path.relpath(relative_page, ROOT) + suffix]
+        targets = [page.as_uri() + suffix, os.path.relpath(relative_page, self.folder) + suffix]
         output = self.folder / 'address-merge'
         self.shoot_targets(output, targets, '--root', str(self.folder), '--size', '800x600', '--no-sheet',
-                           '--query', 'extra=two+words&override=new&multi=x&multi=y', '--states', 'idle,done')
+                           '--query', 'extra=two+words&override=new&multi=x&multi=y', '--states', 'idle,done',
+                           cwd=self.folder)
         report = json.loads((output / 'report.json').read_text(encoding='utf-8'))
         self.assertEqual([r['file'] for r in report],
                          ['index-idle.png', 'index-done.png', 'relative %-idle.png', 'relative %-done.png'])
@@ -833,7 +834,8 @@ console.error(location.search+location.hash);
         suffix = '?season=summer&raw=a%20b&raw=%2f%3f#top%20detail'
         relative_suffix = suffix.replace('?', '?source=relative&', 1)
         output = self.folder / 'raw-address'
-        self.shoot_targets(output, [self.page.as_uri() + suffix, os.path.relpath(self.page, ROOT) + relative_suffix], '--no-sheet')
+        self.shoot_targets(output, [self.page.as_uri() + suffix, os.path.relpath(self.page, self.folder) + relative_suffix],
+                           '--no-sheet', cwd=self.folder)
         report = json.loads((output / 'report.json').read_text(encoding='utf-8'))
         self.assertEqual([r['file'] for r in report], ['sample.png', 'sample-2.png'])
         self.assertEqual([r['issues'] for r in report], [['控制台错误：' + value] for value in (suffix, relative_suffix)])
@@ -851,10 +853,10 @@ console.error(location.search+location.hash);
         link = root / 'escape.html'
         link.symlink_to(self.page)
         for page in (self.page, link):
-            for address in (page.as_uri(), os.path.relpath(page, ROOT)):
+            for address in (page.as_uri(), os.path.relpath(page, self.folder)):
                 with self.subTest(address=address):
                     result = subprocess.run([NODE, str(SCRIPT), address + '?season=summer#top', '--root', str(root),
-                                             '--out', str(self.folder / 'denied')], cwd=ROOT, env=self.env,
+                                             '--out', str(self.folder / 'denied')], cwd=self.folder, env=self.env,
                                             capture_output=True, text=True, timeout=20, encoding='utf-8')
                     self.assertNotEqual(result.returncode, 0)
                     self.assertIn('本地目标不在 --root 内', result.stderr)

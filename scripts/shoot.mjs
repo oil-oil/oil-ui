@@ -309,7 +309,7 @@ for (let i = 0; i < args.length; i++) {
   } else {
     if (stitchInputs.length) fail(`拼图不需要页面，每张图片前都要写 --stitch，收到 ${a}；例如 --stitch before.png --label "修改前" --stitch after.png --label "修改后" --columns 2 --out shots`);
     if (lastFlag === "--motion" && /^(?:[.#\[]|text=)|:has-text\(/.test(a)) fail(`--motion 不带参数，收到 --motion 和 ${a}；要探测的动作写进 --steps，例如 --motion --steps "click ${a}"`);
-    if (positional.length && !/^(?:https?:|file:)|\.html?(?:[?#,]|$)|(?:^|[\/])manifest\.json$/i.test(a) && !existsSync(a)) fail(`页面地址或多余参数冲突，收到 ${positional[0]} 和 ${a}${lastFlag ? `；${lastFlag} 不带参数` : ""}；例如 page.html --steps "click .open"`);
+    if (positional.length && !/^(?:https?:|file:)|\.html?(?:[?#,]|$)|(?:^|[\\/])manifest\.json$/i.test(a) && !existsSync(a)) fail(`页面地址或多余参数冲突，收到 ${positional[0]} 和 ${a}${lastFlag ? `；${lastFlag} 不带参数` : ""}；例如 page.html --steps "click .open"`);
     // Selector-like extras after a switch are never page targets.
     if (lastFlag && /^(?:[.#\[]|text=)/.test(a) && !/\.html?(?:[?#]|$)/i.test(a) && !existsSync(a)) fail(`${lastFlag} 不带参数，收到 ${lastFlag} 和 ${a}；例如 page.html ${lastFlag}`);
     positional.push(a); lastFlag = null;
