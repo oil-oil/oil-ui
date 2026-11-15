@@ -1,49 +1,49 @@
-English · [中文](README.zh-CN.md) · [日本語](README.ja.md)
+English · [中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](https://ui.oiloil.org/ko/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=lang-bar) · [Deutsch](https://ui.oiloil.org/de/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=lang-bar) · [Español](https://ui.oiloil.org/es/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=lang-bar)
+
+[![GitHub Stars](https://img.shields.io/github/stars/oil-oil/oil-ui?style=flat-square&color=292e2b)](https://github.com/oil-oil/oil-ui/stargazers) [![skills.sh](https://img.shields.io/badge/skills.sh-4.6K%2B_installs-4a5d4e?style=flat-square)](https://www.skills.sh/oil-oil/oil-ui/oil-ui) [![Live Gallery](https://img.shields.io/badge/live_gallery-117_examples-3d5a45?style=flat-square)](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=hero-gallery) [![Blind Benchmark](https://img.shields.io/badge/blind_test-87.0%2F100_(15_runs)-5b533b?style=flat-square)](https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-benchmark) [![License: MIT](https://img.shields.io/badge/license-MIT-60675f?style=flat-square)](LICENSE)
+
+**Oil UI** is an interface & UI/UX design skill for AI coding agents. It recommends one clear visual direction and refines it against real-browser screenshots, or explores 3 genuinely distinct directions side by side when you ask to compare. Browse 117 live websites, apps, dashboards, and components at [ui.oiloil.org](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=intro-text).
+
+```bash
+npx skills add oil-oil/oil-ui
+```
+
+**Compatible with:** Claude Code, Cursor, Codex, Windsurf, Cline, Antigravity, OpenCode, GitHub Copilot, Roo Code, DeepSeek Harness ([dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui)), Kimi Code, Trae, and any `SKILL.md`-compatible agent.
+
+| Without Skill (Same Model & Brief · 83/100, 5/6 checks) | With Oil UI (Same Model & Brief · 88/100, 6/6 checks) |
+| :---: | :---: |
+| <a href="https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=hero-compare"><img src="https://ui.oiloil.org/comparisons/ui-design-skills-tested/shots/no-skill-run-1-desktop-initial.png" width="100%" alt="Default agent output without Skill on CommonShelf brief: big opening banner pushes tool filtering down, faint metadata, failed toast check"></a> | <a href="https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=hero-compare"><img src="https://ui.oiloil.org/comparisons/ui-design-skills-tested/shots/oil-ui-run-1-desktop-initial.png" width="100%" alt="With Oil UI on the same CommonShelf brief: search and category filter immediately on screen one, warm editorial hierarchy, all 6 functional scenarios passed"></a> |
+| Opening slogan pushes the working tool directory down; small faint labels and mobile error-dialog clipping ([15-run blind test →](https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=hero-compare)). | Working search and category filter start immediately above the fold; clear card hierarchy, 3/3 runs passed all 6 functional checks (`87.0` avg). |
 
 <p align="center">
   <img src="./assets/readme/hero.en.webp" width="100%" alt="oil-ui: push AI UI design to its limits. A person pins a yellow pushpin to the middle of three previews in different styles">
 </p>
 
 <p align="center">
-  <a href="https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en"><img src="./assets/readme/showcase.en.webp" width="100%" alt="Gallery highlights: an English learning app, a music year in review, hardware and component library websites, a project management tool, a ride-hailing app, a voice assistant, a checkout flow, and a film camera"></a>
+  <a href="https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=showcase-banner"><img src="./assets/readme/showcase.en.webp" width="100%" alt="Gallery highlights: an English learning app, a music year in review, hardware and component library websites, a project management tool, a ride-hailing app, a voice assistant, a checkout flow, and a film camera"></a>
 </p>
-
-Oil UI is an interface design skill for AI agents. It recommends one direction and refines it against real screenshots, or explores several side by side when you ask to compare. It works for websites, apps, dashboards, and components. See more designs at [ui.oiloil.org](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en).
-
-## How it designs
-
-1. **Understand what the product is.** Before drawing anything, it names the product category, finds two or three peers with the most distinctive styles, and looks at what they do and why. Then it decides what to keep and what to change.
-2. **Turn “premium” and “clean” into real decisions.** Everyone uses these words, but they don't tell you what to put on the screen. It first sets the tone from the subject, audience, and brand voice, such as lively or calm, polished or raw, dense or airy. Then it turns that tone into visible choices: which typefaces, how much white space, and how much of the page uses color.
-3. **Start each direction from something concrete.** That could be a material in its setting, a scene, a character, or the visual language of another field. Ideas come from the product itself, not from adjectives like “minimal” or “bold.”
-4. **Decide who the first screen is for.** On pages where people browse, shop, or get work done, the first screen should be the content itself. Only pages meant to persuade need a designed opening layout, settled before the copy is written.
-5. **Make explicit comparisons truly different.** When you ask for several directions, layout, typography, color, and key imagery may share at most one between any two. Once the previews exist, it puts them side by side and squints at the light and dark shapes of each first screen. If two look alike, it changes the layout instead of just swapping colors.
-6. **Leave one moment people remember.** Instead of pushing every part of the page, it makes one or two details exceptional, such as the response to a tap, a successful payment, AI at work, or a 404 page. Everything else stays quiet.
-7. **You decide what looks right.** It recommends one direction for your confirmation by default. When you ask to compare, the previews go on one comparison page; you pick one and say what you like and dislike, and it tightens the design around your feedback before going further.
-8. **Trust the real screen.** When a page is done, it opens it at desktop and mobile sizes and checks screenshots. You can also bring in a reviewer who hasn't seen the work in progress. Last comes a round of subtraction: one focal point per page, and no copy, lines, or boxes that don't help you understand it.
-
-For more usable interfaces, existing project redesigns, or effects such as light trails and dot patterns, see [Oil UI Pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en). The differences are listed [below](#open-source-and-pro).
 
 ## Installation
 
-Send this to an agent that can install skills:
-
-```text
-Install this skill for me: run npx skills add oil-oil/oil-ui
-```
-
-Or run this in your terminal:
+Run in your terminal:
 
 ```bash
 npx skills add oil-oil/oil-ui
 ```
 
-It's ready to use right after installation, with nothing to configure. When a new version is out, your agent mentions it at the end of a reply; ask it to update whenever you like. If you already have Oil UI Pro, you don't need the open-source version. Installing both makes them compete for the same requests.
+Or send this sentence to an agent that can install skills:
 
-If you use DeepSeek Harness, install the native plugin [dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui) (`dsh plugin --profile web add github:oil-oil/dsh-oil-ui`; it includes the free edition and automatically detects a local Oil UI Pro installation).
+```text
+Install this skill for me: run npx skills add oil-oil/oil-ui
+```
+
+It works right after installation with zero configuration. When a newer version is available, your agent mentions it at the end of a reply; ask it to update whenever you want. If you already have Oil UI Pro installed, you don't need the open-source edition—installing both makes them compete for the same requests.
+
+If you use DeepSeek Harness, install the native plugin [dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui) (`dsh plugin --profile web add github:oil-oil/dsh-oil-ui`; it bundles the free edition and automatically detects a local Oil UI Pro installation).
 
 ## Usage
 
-Tell your agent what you need, for example:
+Tell your agent what you want to build, review, or redesign:
 
 - “Use oil-ui to explore a few design directions for this course booking product and build pages I can preview.”
 - “Create three designs with different typography, colors, and compositions. Put them on a comparison page so I can choose.”
@@ -51,9 +51,27 @@ Tell your agent what you need, for example:
 - “Review this homepage and explain what to change and how. Leave the files untouched.”
 - “Recreate this page from the screenshot and add a mobile layout too.”
 
-Share any brand assets, screenshots, or existing project you have. It can start without references and only asks you questions when the deliverable is unclear.
+Share any brand assets, screenshots, or existing codebase you have. It can start without references and only asks questions when the deliverable itself is ambiguous. Intermediate candidates, screenshots, and media caches stay in `.oil-ui`; final code and production assets are written directly to your project.
 
-Intermediate candidates, screenshots, and media caches live in the project’s `.oil-ui` workspace. Final code and production assets are still written back to the project, and existing project conventions take precedence.
+## How it designs
+
+1. **Understand what the product is.** Before drawing anything, it names the product category, finds two or three peers with distinctive styles, studies why their choices work, and decides what to keep or break away from.
+2. **Turn “premium” and “clean” into real decisions.** It sets a concrete tone from the subject, audience, and brand voice—lively or calm, polished or raw, dense or airy—and turns it into visible choices for typefaces, whitespace, and color proportion.
+3. **Start each direction from something concrete.** Ideas come from a material, a setting, an object, or the visual language of another craft—not vague adjectives like “minimal” or “bold.”
+4. **Decide who the first screen is for.** On pages where people browse, shop, or get work done, screen one starts with the content and controls. Only pages meant to persuade get a choreographed opening layout, settled before copy is written.
+5. **Make explicit comparisons truly different.** When you ask for 3 directions, layout, typography, color, and key imagery may share at most one trait between any two. It squints at light/dark shapes side by side and reworks the layout if two look alike.
+6. **Leave one moment people remember.** Instead of decorating every block, it makes one or two interactions memorable—a tap response, a payment confirmation, AI in progress, or a 404 page—while keeping the rest quiet.
+7. **You decide what looks right.** It recommends one direction for confirmation by default, or generates a single comparison page when asked so you can pick and steer before full implementation.
+8. **Trust the real screen.** When a page is built, it opens desktop and mobile viewports to inspect real screenshots, dispatches an isolated reviewer without build-history bias, and finishes with a subtraction pass.
+
+For existing-codebase UI renovations, `DESIGN.md` consolidation, multi-round 9/10 review loops, or 19 coded card prototypes, see [Oil UI Pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=inline-pro). Full differences are listed [below](#open-source-and-pro).
+
+## Benchmarks & Playbooks
+
+- **[4 UI Design Skills Tested (15 Blind Runs & Live Demos)](https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-benchmark)**: Same model, same task brief, 15 independent generations across Oil UI, `frontend-design`, `UI UX Pro Max`, `Impeccable`, and a no-Skill control, with desktop/mobile screenshots and live HTML demos.
+- **[Refreshing Existing Project UI Without Breaking Logic](https://ui.oiloil.org/en/guide/existing-project-ui-renovation/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-renovation)**: How to diagnose live screens, renovate across three controlled steps (tidy noise, upgrade layout, rework flow), cut clicks, and extract a repo-wide `DESIGN.md`.
+- **[Fixing Generic "AI Slop" UI](https://ui.oiloil.org/en/guide/fix-ai-ui-slop/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-antislop)**: A subtraction checklist for stripping out glowing eyebrow pills, 4px left accent bars, triple-nested cards, and invented KPI metrics.
+- **Agent & Scenario Guides**: [Claude Code UI Design](https://ui.oiloil.org/en/guide/claude-code-ui-design/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-claude) · [OpenAI Codex UI Design](https://ui.oiloil.org/en/guide/codex-ui-design/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-codex) · [SaaS Landing Pages](https://ui.oiloil.org/en/guide/landing-page-design/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-landing) · [Dashboards & Workspaces](https://ui.oiloil.org/en/guide/dashboard-workspace-design/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-dashboard) · [Interactive Walkthrough](https://ui.oiloil.org/en/intro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=intro)
 
 ## Built-in style comparison page
 
@@ -61,7 +79,9 @@ Intermediate candidates, screenshots, and media caches live in the project’s `
   <img src="./assets/readme/proof-mona-lisa.webp" width="100%" alt="Style comparison page: three directions for the same Mona Lisa exhibition page, titled Thirty Centimeters, Extra! 1911, and Sfumato">
 </p>
 
-When you want to compare designs, it puts them side by side on one page. They can be HTML files, images, or running development pages, and the current version can go first as a baseline. You can switch between desktop and mobile sizes, open each one at actual size, and browse with the arrow keys. Click “Select” on the one you like, paste the copied sentence into your agent, and it carries on from there.
+When you want to compare designs, it puts them side by side on one page. Candidates can be HTML files, images, or running local dev servers, with the current version placed first as a baseline. Switch between desktop and mobile viewports, open each candidate at actual size, browse with arrow keys, click “Select” on your favorite, and paste the copied prompt back into your agent.
+
+<a id="oil-ui-vs-oil-ui-pro"></a>
 
 ## Open source and Pro
 
@@ -69,7 +89,7 @@ When you want to compare designs, it puts them side by side on one page. They ca
   <img src="./assets/readme/proof-van-gogh.webp" width="100%" alt="Full version style comparison page: three directions for a Van Gogh exhibition page, titled To Theo, Brushstrokes, and East Window">
 </p>
 
-The open-source version takes a new page from a blank start to a good-looking design. Pro builds on that: it makes interfaces easier to use, improves existing projects, and raises the quality bar with stricter review and polishing.
+The open-source version takes a new page from a blank start to a distinctive design. Pro builds on that: it makes interfaces easier to use, renovates existing projects without breaking logic, and raises the bar with stricter multi-round review and polishing.
 
 | | Oil UI (open source) | Oil UI Pro |
 | --- | :---: | :---: |
@@ -92,16 +112,16 @@ The open-source version takes a new page from a blank start to a good-looking de
 | Effects such as light trails, dot patterns, and flowing gradients | | ✓ |
 | Scene layouts, visuals, and state checks for mini-games | | ✓ |
 
-Oil UI Pro costs $9.99: a one-time purchase with lifetime updates. Purchase it at [ui.oiloil.org/pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en).
+Oil UI Pro costs $9.99: a one-time purchase with lifetime updates (+ 100 image generation credits). Get it at [ui.oiloil.org/pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=comparison-table-pro), or run `npx github:oil-oil/oil-cli install oil-ui-pro` to let your agent guide sign-in, payment, and installation.
 
 ## Version checks
 
-Each time it is used, the Skill checks for a newer version, going online at most once every 10 minutes. It only reads the public version list at ui.oiloil.org and uploads nothing from your project. By default it only tells you about an update; it downloads and replaces nothing unless you explicitly ask it to update. Results are cached in `~/.local/state/oil/` (or `XDG_STATE_HOME` when set; `%LOCALAPPDATA%\oil\` on Windows). It needs Python 3. Set `OIL_NO_UPDATE_CHECK=1` to turn it off.
+Each time it is used, the Skill checks for a newer version at most once every 10 minutes. It only reads the public version list at `ui.oiloil.org` and uploads nothing from your project. By default it only notifies you; nothing is downloaded or replaced unless you explicitly ask to update. Results are cached in `~/.local/state/oil/` (`XDG_STATE_HOME` when set; `%LOCALAPPDATA%\oil\` on Windows). Requires Python 3; set `OIL_NO_UPDATE_CHECK=1` to disable.
 
 ## Use with
 
-- [oil-motion](https://github.com/oil-oil/oil-motion): Turn generated videos or frame sequences into web animation controlled by scrolling or dragging, such as product teardowns or camera fly-throughs. Use it for a striking opening animation.
-- [oil-tone](https://github.com/oil-oil/oil-tone): Rewrites headings, descriptions and intro copy so they read naturally and clearly, in Chinese or English. Use it when the copy feels machine-written or awkward.
+- [oil-motion](https://github.com/oil-oil/oil-motion): Turn generated videos or frame sequences into web animation controlled by scrolling or dragging, such as product teardowns or camera fly-throughs.
+- [oil-tone](https://github.com/oil-oil/oil-tone): Rewrites headings, descriptions, and intro copy so they read naturally and clearly in Chinese or English.
 
 ## License
 
