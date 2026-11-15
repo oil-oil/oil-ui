@@ -6,3 +6,8 @@ __pycache__/
 .curate-cache.json
 .curate-cache.json.lock/
 .curate-cache.json.*.tmp
+
+/.oil-ui/
+/_work/
+/.oil-diff/
+/.pytest_cache/
