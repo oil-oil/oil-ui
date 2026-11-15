@@ -1,45 +1,45 @@
-[English](README.md) · [中文](README.zh-CN.md) · 日本語
+[English](README.md) · [中文](README.zh-CN.md) · 日本語 · [한국어](https://ui.oiloil.org/ko/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=lang-bar) · [Deutsch](https://ui.oiloil.org/de/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=lang-bar) · [Español](https://ui.oiloil.org/es/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=lang-bar)
+
+[![GitHub Stars](https://img.shields.io/github/stars/oil-oil/oil-ui?style=flat-square&color=292e2b)](https://github.com/oil-oil/oil-ui/stargazers) [![skills.sh](https://img.shields.io/badge/skills.sh-4.6K%2B_installs-4a5d4e?style=flat-square)](https://www.skills.sh/oil-oil/oil-ui/oil-ui) [![Live Gallery](https://img.shields.io/badge/live_gallery-117_examples-3d5a45?style=flat-square)](https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=hero-gallery) [![Blind Benchmark](https://img.shields.io/badge/blind_test-87.0%2F100_(15_runs)-5b533b?style=flat-square)](https://ui.oiloil.org/ja/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=guide-benchmark) [![License: MIT](https://img.shields.io/badge/license-MIT-60675f?style=flat-square)](LICENSE)
+
+**Oil UI** は、AI コーディングエージェント向けのインターフェース／UI・UX デザインスキルです。1 つの明確な方向性を推奨して実際のブラウザスクリーンショットをもとに磨き上げるか、比較を求められた場合は 3 つの異なる方向性を並べて検討します。117 件のライブ事例は [ui.oiloil.org](https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=intro-text) でご覧いただけます。
+
+```bash
+npx skills add oil-oil/oil-ui
+```
+
+**対応エージェント：** Claude Code, Cursor, Codex, Windsurf, Cline, Antigravity, OpenCode, GitHub Copilot, Roo Code, DeepSeek Harness（[dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui)）, Kimi Code, Trae ほか `SKILL.md` 対応エージェント。
+
+| Skill なし（同一モデル・同一課題 · 83/100、5/6 合格） | Oil UI 使用（同一モデル・同一課題 · 88/100、6/6 全合格） |
+| :---: | :---: |
+| <a href="https://ui.oiloil.org/ja/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=hero-compare"><img src="https://ui.oiloil.org/comparisons/ui-design-skills-tested/shots/no-skill-run-1-desktop-initial.png" width="100%" alt="Skill なしのデフォルト出力：大きな見出しで検索欄が押し下げられ、薄い小さな補助文字が多い"></a> | <a href="https://ui.oiloil.org/ja/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=hero-compare"><img src="https://ui.oiloil.org/comparisons/ui-design-skills-tested/shots/oil-ui-run-1-desktop-initial.png" width="100%" alt="Oil UI 使用時の出力：ファーストビューで検索と絞り込みが使え、カードの階層が明確で全 6 シナリオ合格"></a> |
+| 大きなスローガンがツール検索を押し下げ、薄い小文字やモバイルダイアログの見切れが発生（[15 回のブラインド実測 →](https://ui.oiloil.org/ja/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=hero-compare)）。 | ファーストビューから検索・カテゴリ絞り込みを配置し、3 回すべての独立実行で機能検証 6/6 に合格（平均 `87.0` 点）。 |
 
 <p align="center">
   <img src="./assets/readme/hero.en.webp" width="100%" alt="oil-ui：AI による UI デザインを限界まで引き上げます。異なるスタイルの 3 つのプレビューのうち、真ん中のものに黄色い画鋲を刺している人">
 </p>
 
 <p align="center">
-  <a href="https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja"><img src="./assets/readme/showcase.en.webp" width="100%" alt="ギャラリーのハイライト：英語学習アプリ、音楽の年間まとめ、ハードウェアとコンポーネントライブラリの Web サイト、プロジェクト管理ツール、配車アプリ、音声アシスタント、チェックアウトのフロー、フィルムカメラ"></a>
+  <a href="https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=showcase-banner"><img src="./assets/readme/showcase.en.webp" width="100%" alt="ギャラリーのハイライト：英語学習アプリ、音楽の年間まとめ、ハードウェアとコンポーネントライブラリの Web サイト、プロジェクト管理ツール、配車アプリ、音声アシスタント、チェックアウトのフロー、フィルムカメラ"></a>
 </p>
-
-Oil UI は、AI エージェントのためのインターフェースデザインのスキルです。1 つの方向性を推奨して実際のスクリーンショットをもとに磨き上げるか、比較を求められた場合は複数の方向性を並べて検討します。Web サイト、アプリ、ダッシュボード、コンポーネントに使えます。その他のデザインは [ui.oiloil.org](https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja) でご覧いただけます。
-
-## デザインの進め方
-
-1. **プロダクトが何なのかを理解する。** 何かを描く前に、プロダクトのカテゴリを特定し、最も個性的なスタイルを持つ同種のプロダクトを 2〜3 個見つけて、それらが何をしていて、なぜそうしているのかを調べます。そのうえで、何を残し、何を変えるかを決めます。
-2. **「上質」や「すっきり」を、実際の判断に落とし込む。** 誰もがこうした言葉を使いますが、それだけでは画面に何を置けばよいかはわかりません。まず、主題、オーディエンス、ブランドの語り口から、にぎやかか落ち着いているか、洗練されているか粗削りか、密度が高いかゆったりしているか、といったトーンを決めます。次に、そのトーンを目に見える選択に変えます：どの書体を使うか、余白をどれだけ取るか、ページのどれだけに色を使うか。
-3. **それぞれの方向性を、具体的なものから始める。** それは、その場にある素材、ある場面、あるキャラクター、あるいは別の分野の視覚的な言語かもしれません。アイデアは「ミニマル」や「大胆」といった形容詞からではなく、プロダクトそのものから生まれます。
-4. **最初の画面を誰のためのものにするかを決める。** 人が閲覧したり、買い物をしたり、仕事を片付けたりするページでは、最初の画面はコンテンツそのものであるべきです。デザインされたオープニングのレイアウトが必要なのは、説得を目的としたページだけで、それもコピーを書く前に決めておきます。
-5. **明示的な比較では、本当に違うものにする。** 複数の方向性を求められた場合、どの 2 つの間でも、レイアウト、タイポグラフィ、色、主要なイメージのうち共通にしてよいのは最大 1 つだけです。プレビューができたら、それらを並べて、目を細めて各案の最初の画面の明暗の形を見比べます。2 つが似て見える場合は、色を入れ替えるだけでなく、レイアウトを変えます。
-6. **人の記憶に残る瞬間を 1 つ残す。** ページのすべての部分を作り込むのではなく、タップへの反応、支払いの成功、AI が作業している様子、404 ページなど、1〜2 か所の細部を特別なものにします。それ以外は控えめにしておきます。
-7. **何がよいかを決めるのはあなたです。** デフォルトでは、1 つの方向性を推奨して、あなたの確認を求めます。比較を求めた場合は、プレビューが 1 つの比較ページにまとめられます。あなたが 1 つを選んで好きな点と嫌いな点を伝えると、そのフィードバックに沿ってデザインを詰めてから先に進みます。
-8. **実際の画面を信頼する。** ページが完成したら、デスクトップとモバイルのサイズで開いて、スクリーンショットを確認します。作業途中を見ていないレビュアーを呼ぶこともできます。最後に、引き算のラウンドを行います：ページごとにフォーカスは 1 つにし、理解の助けにならないコピー、線、ボックスは残しません。
-
-より使いやすいインターフェース、既存のプロジェクトのリデザイン、光の軌跡やドットパターンのようなエフェクトについては、[Oil UI Pro](https://ui.oiloil.org/ja/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja) をご覧ください。違いは[下記](#オープンソース版と-pro)にまとめています。
 
 ## インストール
 
-スキルをインストールできるエージェントに、次のように伝えてください：
-
-```text
-次のコマンドを実行してこのスキルをインストールしてください：npx skills add oil-oil/oil-ui
-```
-
-または、ターミナルで次を実行してください：
+ターミナルで実行します：
 
 ```bash
 npx skills add oil-oil/oil-ui
 ```
 
-インストールしたらすぐに使え、設定は何も必要ありません。新しいバージョンが出ると、エージェントが返答の最後で知らせてくれるので、好きなときに更新を頼んでください。すでに Oil UI Pro をお持ちの場合は、オープンソース版は必要ありません。両方をインストールすると、同じリクエストを奪い合ってしまいます。
+または、スキルを導入できるエージェントに次を送ってください：
 
-DeepSeek Harness を使っている場合は、ネイティブのプラグイン [dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui) をインストールしてください（`dsh plugin --profile web add github:oil-oil/dsh-oil-ui`。無料版が含まれており、ローカルにインストールされた Oil UI Pro を自動的に検出します）。
+```text
+次のコマンドを実行してこのスキルをインストールしてください：npx skills add oil-oil/oil-ui
+```
+
+インストール後すぐに使え、設定は不要です。新しいバージョンが出ると返答の最後で知らせてくれます。すでに Oil UI Pro をお持ちの場合はオープンソース版は不要です（両方入れると同じ依頼を奪い合います）。
+
+DeepSeek Harness をお使いの場合はネイティブプラグイン [dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui)（`dsh plugin --profile web add github:oil-oil/dsh-oil-ui`）をご利用ください。
 
 ## 使い方
 
@@ -51,9 +51,20 @@ DeepSeek Harness を使っている場合は、ネイティブのプラグイン
 - 「このホームページをレビューして、何をどう変えるべきか説明して。ファイルには手を加えないで。」
 - 「スクリーンショットからこのページを再現して、モバイルのレイアウトも追加して。」
 
-ブランドのアセット、スクリーンショット、既存のプロジェクトがあれば共有してください。参考資料がなくても始められ、成果物が不明確な場合にだけ質問してきます。
+ブランドのアセット、スクリーンショット、既存のプロジェクトがあれば共有してください。中間の候補、スクリーンショット、メディアのキャッシュは `.oil-ui` ワークスペースに保存され、本番コードとアセットはプロジェクトに書き戻されます。
 
-中間の候補、スクリーンショット、メディアのキャッシュは、プロジェクトの `.oil-ui` ワークスペースに保存されます。最終的なコードと本番用のアセットはこれまでどおりプロジェクトに書き戻され、プロジェクトの既存の慣例が優先されます。
+## デザインの進め方
+
+1. **プロダクトが何なのかを理解する。** 何かを描く前に、プロダクトのカテゴリを特定し、最も個性的なスタイルを持つ同種のプロダクトを 2〜3 個見つけて、何を残し何を変えるかを決めます。
+2. **「上質」や「すっきり」を、実際の判断に落とし込む。** 主題、オーディエンス、ブランドの語り口からトーンを定め、書体・余白・色の配分という目に見える選択に変えます。
+3. **それぞれの方向性を、具体的なものから始める。** その場にある素材、場面、あるいは別分野の視覚言語から発想し、「ミニマル」のような抽象語からは始めません。
+4. **最初の画面を誰のためのものにするかを決める。** 閲覧・買い物・実務のページでは最初の画面をコンテンツと操作そのものにします。説得のためのページだけ、コピーを書く前にオープニングの構図を決めます。
+5. **明示的な比較では、本当に違うものにする。** レイアウト、タイポグラフィ、色、主要なイメージのうち共通にしてよいのは最大 1 つだけです。明暗のシルエットが似ていればレイアウトから変えます。
+6. **人の記憶に残る瞬間を 1 つ残す。** ページ全体を飾るのではなく、タップへの反応や支払い完了など 1〜2 か所の細部だけを特別にし、それ以外は静かに保ちます。
+7. **何がよいかを決めるのはあなたです。** デフォルトでは 1 つの方向性を推奨し、比較を求められたときは 1 つの比較ページに並べてフィードバックを反映します。
+8. **実際の画面を信頼する。** デスクトップとモバイルの実画面スクリーンショットを確認し、作業過程を見ていない独立レビュアーのチェックと引き算のラウンドで仕上げます。
+
+既存プロジェクトのリデザイン、`DESIGN.md` の統合、9/10 を目指す反復レビュー、19 種のカードプロトタイプについては [Oil UI Pro](https://ui.oiloil.org/ja/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=inline-pro) をご覧ください。違いは[下記](#オープンソース版と-pro)にまとめています。
 
 ## 組み込みのスタイル比較ページ
 
@@ -61,7 +72,7 @@ DeepSeek Harness を使っている場合は、ネイティブのプラグイン
   <img src="./assets/readme/proof-mona-lisa.webp" width="100%" alt="スタイル比較ページ：同じモナ・リザの展覧会のページに対する 3 つの方向性。タイトルは Thirty Centimeters、Extra! 1911、Sfumato">
 </p>
 
-デザインを比較したいときは、それらを 1 つのページに並べて表示します。HTML ファイル、画像、実行中の開発用のページのいずれでもよく、現在のバージョンを基準として最初に置くこともできます。デスクトップとモバイルのサイズを切り替えたり、それぞれを実寸で開いたり、矢印キーで閲覧したりできます。気に入ったものの「Select」をクリックし、コピーされた文をエージェントに貼り付けると、そこから作業を続けてくれます。
+デザインを比較したいときは、HTML ファイル、画像、開発サーバー上のページを 1 つの比較ページに並べます。デスクトップとモバイルの切り替え、実寸表示、矢印キーでの移動に対応し、「Select」でコピーした文をエージェントに貼るだけで続行できます。
 
 ## オープンソース版と Pro
 
@@ -69,7 +80,7 @@ DeepSeek Harness を使っている場合は、ネイティブのプラグイン
   <img src="./assets/readme/proof-van-gogh.webp" width="100%" alt="完全版のスタイル比較ページ：ゴッホの展覧会のページに対する 3 つの方向性。タイトルは To Theo、Brushstrokes、East Window">
 </p>
 
-オープンソース版は、新しいページを白紙の状態から見栄えのよいデザインに仕上げます。Pro はその上に、インターフェースをより使いやすくし、既存のプロジェクトを改善し、より厳格なレビューと磨き上げによって品質の基準を引き上げます。
+オープンソース版は、新しいページを白紙の状態から見栄えのよいデザインに仕上げます。Pro はその上に、使いやすさの徹底、既存プロジェクトの安全な改善、より厳格なレビューと磨き上げを追加します。
 
 | | Oil UI（オープンソース版） | Oil UI Pro |
 | --- | :---: | :---: |
@@ -92,16 +103,16 @@ DeepSeek Harness を使っている場合は、ネイティブのプラグイン
 | 光の軌跡、ドットパターン、流れるグラデーションなどのエフェクト | | ✓ |
 | ミニゲームのシーンのレイアウト、ビジュアル、状態のチェック | | ✓ |
 
-Oil UI Pro は $9.99 です：一度の購入で、生涯アップデートを受けられます。[ui.oiloil.org/pro](https://ui.oiloil.org/ja/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja) でご購入いただけます。
+Oil UI Pro は $9.99（買い切り・生涯アップデート、画像生成 100 クレジット付き）です。[ui.oiloil.org/pro](https://ui.oiloil.org/ja/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=comparison-table-pro) でご購入いただけます。
 
 ## バージョンの確認
 
-使うたびに、スキルは新しいバージョンがあるかを確認しますが、オンラインに接続するのは最大で 10 分に 1 回です。読み取るのは ui.oiloil.org の公開されたバージョンの一覧だけで、プロジェクトから何かをアップロードすることはありません。デフォルトではアップデートについて知らせるだけで、明示的に更新を頼まない限り、何もダウンロードしたり置き換えたりしません。結果は `~/.local/state/oil/`（設定されている場合は `XDG_STATE_HOME`、Windows では `%LOCALAPPDATA%\oil\`）にキャッシュされます。Python 3 が必要です。無効にするには `OIL_NO_UPDATE_CHECK=1` を設定してください。
+使うたびに最大 10 分に 1 回、`ui.oiloil.org` の公開バージョン一覧を確認します（プロジェクトの内容は一切送信しません）。明示的に更新を頼まない限り、ファイルのダウンロードや置き換えは行いません。キャッシュ先は `~/.local/state/oil/`（Windows では `%LOCALAPPDATA%\oil\`）、無効化は `OIL_NO_UPDATE_CHECK=1` です。
 
 ## 組み合わせて使う
 
-- [oil-motion](https://github.com/oil-oil/oil-motion)：生成した動画やフレームのシーケンスを、製品の分解やカメラのフライスルーのように、スクロールやドラッグで操作する Web アニメーションに変えます。印象的なオープニングのアニメーションに使ってください。
-- [oil-tone](https://github.com/oil-oil/oil-tone)：見出し、説明文、導入のコピーを、中国語でも英語でも、自然でわかりやすく読めるように書き直します。コピーが機械的に書かれたように感じたり、ぎこちなかったりするときに使ってください。
+- [oil-motion](https://github.com/oil-oil/oil-motion)：生成した動画や連番フレームをスクロール・ドラッグ連動の Web アニメーションに変換します。
+- [oil-tone](https://github.com/oil-oil/oil-tone)：見出しや説明文を自然で読みやすい文章に整えます。
 
 ## ライセンス
 
