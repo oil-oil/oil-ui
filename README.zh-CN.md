@@ -64,7 +64,7 @@ npx skills add oil-oil/oil-ui
 7. **好不好看由你来定。** 默认推荐一个方向给你确认；明确要求比较时才把几份小样放进同一个对比页，按你的取舍收紧后再往下做。
 8. **以真实画面为准。** 做完在桌面和手机尺寸下打开页面看真实截图，可派没有制作上下文的独立评审把关，最后做一轮减法。
 
-想改造存量老项目、合并整理 `DESIGN.md`、跑以 9 分为目标的多轮评审，或使用 19 套带源码卡片原型，可以了解 [Oil UI Pro](https://ui.oiloil.org/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=inline-pro)，区别见[下文](#开源版和-pro)。
+想改造存量老项目、合并整理 `DESIGN.md`、按需开启冲 9 分的深度打磨复核，或使用 19 套带源码卡片原型，可以了解 [Oil UI Pro](https://ui.oiloil.org/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=inline-pro)，区别见[下文](#开源版和-pro)。
 
 ## 实测横评与实战指南
 
@@ -96,7 +96,7 @@ npx skills add oil-oil/oil-ui
 | 让人记住的一刻和滚动叙事（视差、一镜到底） | ✓ | ✓ |
 | 截图还原 | ✓ | ✓ |
 | 小游戏的演出节奏、手感、生成素材和实时 3D | ✓ | ✓ |
-| 独立评审 | 视觉打分与轻量 UX 走查 | 以 9 分为目标反复评审修改；检查几个方向有没有撞车；自主风险探针与同路径 UX 复核 |
+| 独立评审 | 视觉打分与轻量 UX 走查 | 默认盲审 + 可选深度打磨（最多 3 轮冲 9 分与同路径 UX 复核）；检查几个方向有没有撞车；自主风险探针 |
 | 精修：AI 默认审美自查、细节清单、怎么做减法 | | ✓ |
 | 好用：交互和状态、表单、弹窗与浮层、电脑和手机上的布局 | | ✓ |
 | 后台和工具：按产品挑工作区布局，让风格贯穿整页 | | ✓ |

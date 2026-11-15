@@ -64,7 +64,7 @@ Share any brand assets, screenshots, or existing codebase you have. It can start
 7. **You decide what looks right.** It recommends one direction for confirmation by default, or generates a single comparison page when asked so you can pick and steer before full implementation.
 8. **Trust the real screen.** When a page is built, it opens desktop and mobile viewports to inspect real screenshots, dispatches an isolated reviewer without build-history bias, and finishes with a subtraction pass.
 
-For existing-codebase UI renovations, `DESIGN.md` consolidation, multi-round 9/10 review loops, or 19 coded card prototypes, see [Oil UI Pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=inline-pro). Full differences are listed [below](#open-source-and-pro).
+For existing-codebase UI renovations, `DESIGN.md` consolidation, optional multi-round 9/10 deep polish, or 19 coded card prototypes, see [Oil UI Pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=inline-pro). Full differences are listed [below](#open-source-and-pro).
 
 ## Benchmarks & Playbooks
 
@@ -89,7 +89,7 @@ When you want to compare designs, it puts them side by side on one page. Candida
   <img src="./assets/readme/proof-van-gogh.webp" width="100%" alt="Full version style comparison page: three directions for a Van Gogh exhibition page, titled To Theo, Brushstrokes, and East Window">
 </p>
 
-The open-source version takes a new page from a blank start to a distinctive design. Pro builds on that: it makes interfaces easier to use, renovates existing projects without breaking logic, and raises the bar with stricter multi-round review and polishing.
+The open-source version takes a new page from a blank start to a distinctive design. Pro builds on that: it makes interfaces easier to use, renovates existing projects without breaking logic, and raises the bar with deeper review and polishing.
 
 | | Oil UI (open source) | Oil UI Pro |
 | --- | :---: | :---: |
@@ -98,7 +98,7 @@ The open-source version takes a new page from a blank start to a distinctive des
 | Memorable moments and scroll storytelling (parallax, continuous shots) | ✓ | ✓ |
 | Screenshot recreation | ✓ | ✓ |
 | Pacing, feel, generated assets, and real-time 3D for mini-games | ✓ | ✓ |
-| Independent review | Visual scoring and a lightweight UX walkthrough | Repeated review and revision aiming for 9/10; checks whether directions overlap; autonomous risk probes and same-path UX rechecks |
+| Independent review | Visual scoring and a lightweight UX walkthrough | Default blind review + optional deep polish (up to 3 rounds aiming for 9/10 & same-path UX rechecks); direction-overlap checks and autonomous UX risk probes |
 | Polish: checks for AI design defaults, a detail checklist, and how to simplify | | ✓ |
 | Usability: interactions and states, forms, dialogs and popovers, desktop and mobile layouts | | ✓ |
 | Dashboards and tools: workspace layouts chosen for the product, with one style throughout | | ✓ |
