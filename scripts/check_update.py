@@ -27,11 +27,11 @@ from typing import NamedTuple
 ROOT = Path(__file__).resolve().parent.parent
 API = os.environ.get("OIL_API", "https://ui.oiloil.org").rstrip("/")
 # 固定经过检查的 CLI：无 npm 依赖，下载包必须通过 SHA-256 与归档路径校验。
-CLI = "github:oil-oil/oil-cli#e6ee580c01e854919ee50ef1f3de6876c3c52c18"
+CLI = "github:oil-oil/oil-cli#3a9f2b417d0f3dfe5a143dbd4c96017e7f7e8ded"
 UPDATE_ENV_KEYS = {
     "PATH", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_STATE_HOME",
     "SYSTEMROOT", "WINDIR", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "LC_MESSAGES",
-    "OIL_API", "OIL_TOKEN",
+    "OIL_API", "OIL_TOKEN", "OIL_DOWNLOAD_TIMEOUT", "OIL_UPDATE_TIMEOUT",
 }
 DAY = 24 * 3600
 # 发版后用户下一次使用就能更新；版本列表有服务端缓存，频繁检查的成本很低
@@ -39,7 +39,22 @@ CHECK_INTERVAL = 10 * 60
 # 联网检查不能拖慢任务：超时就跳过，下次再查
 FETCH_TIMEOUT = 2
 RETRY_AFTER_FAILURE = 3600
-UPDATE_TIMEOUT = 300
+UPDATE_TIMEOUT = 600
+MAX_UPDATE_TIMEOUT = 86400
+
+
+def resolve_update_timeout() -> float:
+    raw = os.environ.get("OIL_UPDATE_TIMEOUT", "").strip()
+    if not raw:
+        return float(UPDATE_TIMEOUT)
+    match = re.fullmatch(r"([1-9]\d*)(ms|s)?", raw, re.IGNORECASE)
+    if not match:
+        return float(UPDATE_TIMEOUT)
+    value = int(match.group(1))
+    seconds = value / 1000.0 if (match.group(2) or "").lower() == "ms" else float(value)
+    if seconds <= 0 or seconds > MAX_UPDATE_TIMEOUT:
+        return float(UPDATE_TIMEOUT)
+    return seconds
 
 
 def read_skill() -> tuple[str, str] | None:
@@ -146,6 +161,7 @@ def update_context(approved: bool = False) -> tuple[str, str | None, bool]:
     version = re.fullmatch(r"v?(\d+)\.\d+\.\d+", node_version)
     ready = bool(npx and version and int(version.group(1)) >= 18)
     context = [API, file_signature(config_path()), os.environ.get("OIL_TOKEN", ""),
+               os.environ.get("OIL_DOWNLOAD_TIMEOUT", ""), os.environ.get("OIL_UPDATE_TIMEOUT", ""),
                file_signature(npx), file_signature(node), node_version,
                bool(os.environ.get("OIL_NO_AUTO_UPDATE")), approved, CLI]
     fingerprint = hashlib.sha256(json.dumps(context).encode()).hexdigest()
@@ -181,11 +197,11 @@ def auto_update(name: str, latest: str, free: bool, npx: str | None, ready: bool
     try:
         result = subprocess.run([npx, "-y", CLI, "update", name, "--path", str(ROOT), "--json"], env=env,
                                 stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                                timeout=UPDATE_TIMEOUT, check=False, encoding="utf-8", errors="replace")
+                                timeout=resolve_update_timeout(), check=False, encoding="utf-8", errors="replace")
     except FileNotFoundError:
         return UpdateResult(False, "dependencies")
     except subprocess.TimeoutExpired:
-        return UpdateResult(True, "network")
+        return UpdateResult(True, "download_timeout")
     except (OSError, subprocess.SubprocessError):
         return UpdateResult(True, "failed")
     error = cli_error(result.stdout, result.stderr)
@@ -207,10 +223,10 @@ def english() -> bool:
     return not (os.environ.get("LC_ALL") or os.environ.get("LC_MESSAGES") or os.environ.get("LANG", "")).lower().startswith("zh")
 
 
-def update_command(name: str) -> str:
+def update_command(name: str, platform_name: str = os.name) -> str:
     # 从同一入口执行，保留固定 CLI 和环境白名单；不让宿主自行拼接 npx 命令。
     args = [sys.executable, str(ROOT / "scripts" / "check_update.py"), "--update"]
-    return subprocess.list2cmdline(args) if os.name == "nt" else shlex.join(args)
+    return subprocess.list2cmdline(args) if platform_name == "nt" else shlex.join(args)
 
 
 def product_name(name: str) -> str:
@@ -226,8 +242,8 @@ def zh_label(label: str) -> str:
     return label if re.search(r"[\u4e00-\u9fff]$", label) else f"{label} "
 
 
-def notice(name: str, current: str, latest: str, detail: str, reason: str) -> str:
-    command = update_command(name)
+def notice(name: str, current: str, latest: str, detail: str, reason: str, platform_name: str = os.name) -> str:
+    command = update_command(name, platform_name)
     label = product_name(name)
     if english():
         intro = f"{label} {latest} is available (current: {current}){detail}. "
@@ -237,6 +253,10 @@ def notice(name: str, current: str, latest: str, detail: str, reason: str) -> st
             return intro + f"This Skill has no purchase record. Purchase it at https://ui.oiloil.org/en/pro/ to get updates, then run {command}."
         if reason == "dependencies":
             return intro + f"Automatic updates need Node.js 18 or later. Install it, then run {command}."
+        if reason == "download_timeout":
+            if platform_name == "nt":
+                return intro + f"Package download timed out. Set OIL_UPDATE_TIMEOUT=900 and OIL_DOWNLOAD_TIMEOUT=600, then run {command}."
+            return intro + f"Package download timed out. Run OIL_UPDATE_TIMEOUT=900 OIL_DOWNLOAD_TIMEOUT=600 {command}."
         return intro + f"To update, run {command}."
     intro = f"{zh_label(label)}有新版本 {latest}（当前 {current}）{detail}。"
     if reason == "unauthorized":
@@ -245,6 +265,10 @@ def notice(name: str, current: str, latest: str, detail: str, reason: str) -> st
         return intro + f"这份 Skill 没有对应的购买记录，购买后才能获得更新。打开 https://ui.oiloil.org/pro/ 购买，再运行 {command}。"
     if reason == "dependencies":
         return intro + f"自动更新需要 Node.js 18 以上。安装后运行 {command}。"
+    if reason == "download_timeout":
+        if platform_name == "nt":
+            return intro + f"安装包下载超时，请设置环境变量 OIL_UPDATE_TIMEOUT=900 与 OIL_DOWNLOAD_TIMEOUT=600 后运行 {command}。"
+        return intro + f"安装包下载超时，可运行 OIL_UPDATE_TIMEOUT=900 OIL_DOWNLOAD_TIMEOUT=600 {command}。"
     return intro + f"在终端运行 {command} 即可更新。"
 
 
@@ -301,7 +325,7 @@ def main() -> int:
     context, npx, ready = update_context(approved)
 
     reason = state.get("auto_failed_reason", "failed")
-    cooldown = RETRY_AFTER_FAILURE if reason == "network" else DAY
+    cooldown = RETRY_AFTER_FAILURE if reason in {"network", "download_timeout"} else DAY
     if (state.get("auto_failed_version") != latest or state.get("auto_failed_context") != context
             or now - float(state.get("auto_failed_at", 0)) >= cooldown):
         result = auto_update(name, latest, bool(cache.get("free")), npx, ready, approved)
