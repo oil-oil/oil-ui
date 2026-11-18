@@ -110,7 +110,7 @@ npx skills add oil-oil/oil-ui
 | 流光、点阵、流动渐变这类特效 | | ✓ |
 | 小游戏的场景布局、视觉和状态检查 | | ✓ |
 
-Oil UI Pro 69 元，一次买断，永久更新（送 100 生图积分），在 [ui.oiloil.org/pro](https://ui.oiloil.org/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=comparison-table-pro) 购买，或运行 `npx github:oil-oil/oil-cli install oil-ui-pro` 由 Agent 带你登录、付款并装好。
+Oil UI Pro 99 元，一次买断，永久更新（送 100 生图积分），在 [ui.oiloil.org/pro](https://ui.oiloil.org/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=comparison-table-pro) 购买，或运行 `npx github:oil-oil/oil-cli install oil-ui-pro` 由 Agent 带你登录、付款并装好。
 
 ## 版本检查
 

@@ -103,7 +103,7 @@ DeepSeek Harness をお使いの場合はネイティブプラグイン [dsh-oil
 | 光の軌跡、ドットパターン、流れるグラデーションなどのエフェクト | | ✓ |
 | ミニゲームのシーンのレイアウト、ビジュアル、状態のチェック | | ✓ |
 
-Oil UI Pro は $9.99（買い切り・生涯アップデート、画像生成 100 クレジット付き）です。[ui.oiloil.org/pro](https://ui.oiloil.org/ja/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=comparison-table-pro) でご購入いただけます。
+Oil UI Pro は $14.99（買い切り・生涯アップデート、画像生成 100 クレジット付き）です。[ui.oiloil.org/pro](https://ui.oiloil.org/ja/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=comparison-table-pro) でご購入いただけます。
 
 ## バージョンの確認
 
