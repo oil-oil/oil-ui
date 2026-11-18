@@ -18,7 +18,7 @@
 2. **Oil 生图脚本**：若无宿主生图工具，静默调用 `oiloil-image.mjs` 的 `balance` 子命令检查积分状态；退出码为 `0` 且输出余额 `>= 2` 积分时，视为生图能力可用。能用不等于可以花积分：走 Oil 积分前，本任务必须已授权使用积分，见下文的确认和 [素材](media.md) 的来源顺序。
 3. **无生图能力时静默回退**：若两者均不可用（未登录、积分不足或离线环境），不报错、不索要密钥、不中断任务，直接按常规代码流程推进。
 
-确认生图能力可用、且用户尚未明确指定“先生图”或“直接写代码”时，**将步骤 1 的三四行方案推荐与是否生图合并为全流程唯一一次确认**（不在方案确认前额外提问，也不在生图完成后再次停顿等确认）。要走 Oil 积分时，在第 1、3 项里写明会消耗积分，用户选了就算本任务授权：
+确认生图能力可用、且用户尚未明确指定“先生图”或“直接写代码”时，**把定方向时发给用户的三四行方案和是否生图，合并成全流程唯一一次确认**（不在方案确认前额外提问，也不在生图完成后再次停顿等确认）。要走 Oil 积分时，在第 1、3 项里写明会消耗积分，用户选了就算本任务授权：
 
 1. **（推荐）先按此方案生成 UI 设计稿，并直接完成响应式代码实现**
 2. **跳过生图，直接按此方案用代码实现界面**
@@ -62,7 +62,7 @@
 - 移动端 `390×844` 的逻辑视口可以生成 `1024×1536` 的图片，但不能把生成图的 `1024` 像素宽当作手机布局宽；桌面长页数千像素的高度也不是桌面视口高度。
 - **生图提示词遵循「45–65 词精简法则」，依靠以下 5 条设计洞察释放模型上限**：
   1. **控长度（45–65 词，2–3 句话）**：只定义“结构关系、比例留白、色彩角色范围与图形构件”，不写长篇逐行线框图说明书，把自然排版与构图权还给模型。
-  2. **不塞具体引号文案与外部品牌配对**：在提示词中罗列十几个中文标题或具体数值，会迫使模型为了画清每个汉字而将全局字号与容器放大 1.5 倍；指定真实外部品牌配对则极易画错图标。生图阶段只写领域与语言（`Simplified Chinese interface for <产品领域>`）及通用图标约束（`clean abstract icons, no third-party brand logos`），具体业务文案与真实身份素材留到代码阶段实现。
+  2. **不塞具体引号文案与外部品牌配对**：在提示词中罗列十几个中文标题或具体数值，会迫使模型为了画清每个汉字而将全局字号与容器放大 1.5 倍；指定真实外部品牌配对则极易画错图标。生图阶段只写领域与界面语言（`<界面语言> interface for <产品领域>`，例如中文产品写 `Simplified Chinese`）及通用图标约束（`clean abstract icons, no third-party brand logos`），具体业务文案与真实身份素材留到代码阶段实现。
   3. **用「小比例底盘＋充裕留白」锁死清爽度**：固定声明 `delicate small-scale desktop proportions, petite typography, and generous open whitespace`。严禁使用 `oversized`、`giant`、`thick`（会连带放大侧栏与按钮），也不用机械的“每张卡片留白 50%”（会导致均质空洞白框）。
   4. **色彩不写死固定色号，按「存量继承」或「无彩色骨架＋低明度重色锚点＋单峰高亮」的范围法则动态调配**：
      - **为什么生图容易缺乏现代高级感？** 当提示词未区分“界面骨架色”与“数据焦点色”时，模型会把导航、主按钮、整排图表柱和状态栏全部刷成同一种高饱和度亮色，瞬间沦为传统报表。
@@ -78,7 +78,7 @@
 编写生图提示词时，按以下 **5 槽位填空模板** 组装（整段控制在 45–65 词，按具体产品在对应范围内灵活填空，不照抄固定配色或固定组件）：
 
 ```text
-<1. 调性与页面形态> UI design (<输出尺寸，如 1536x1024>) inside a clean rounded desktop window, Simplified Chinese interface for <产品领域简述>. Delicate small-scale desktop proportions, petite typography, and generous open whitespace. <2. 画布底色范围与无彩色控件骨架> with <3. 导航与主体布局结构>, anchored by <4. 单个低明度重色锚点与 5% 单点高亮色（按产品气质在对应范围内自选，或沿用存量品牌色）>, featuring <5. 2–3 个匹配业务的图形化微组件（非核心项保持浅灰或斜纹）>, clean abstract icons, no third-party brand logos.
+<1. 调性与页面形态> UI design (<输出尺寸，如 1536x1024>) inside a clean rounded desktop window, <界面语言> interface for <产品领域简述>. Delicate small-scale desktop proportions, petite typography, and generous open whitespace. <2. 画布底色范围与无彩色控件骨架> with <3. 导航与主体布局结构>, anchored by <4. 单个低明度重色锚点与 5% 单点高亮色（按产品气质在对应范围内自选，或沿用存量品牌色）>, featuring <5. 2–3 个匹配业务的图形化微组件（非核心项保持浅灰或斜纹）>, clean abstract icons, no third-party brand logos.
 ```
 
 | 填空槽位 | 范围与洞察原则（不写死单一套餐） | 英文表达结构与可选范围 |
@@ -87,13 +87,13 @@
 | **2. `<画布底色范围与无彩色骨架>`** | **新建项目**按产品气质在纯净白、暖亚麻纸白、冷石白或深邃炭黑/曜石黑等低彩度底色范围内选择，并声明**哑光黑/炭灰交互控件＋中性浅灰辅助元素**；**存量项目**直接填既有底色与视觉变量 | 新建浅色／画报底色范围：`Spacious <pure-white / warm archival paper / cool stone-white / soft sand-linen> canvas with matte-black active controls and soft neutral-gray secondary elements`<br>新建深色／影院底色范围：`Deep <obsidian / carbon-slate / matte-espresso> canvas with subtle hairline borders and muted gray secondary elements`<br>存量项目继承：`Existing <存量底色描述> canvas preserving the project's <存量主辅色与组件特征> visual tokens` |
 | **3. `<导航与主体布局结构>`** | 工作区按浏览顺序选结构，不默认套 Bento 卡片墙；落地页按 [说服型骨架](direction-persuasion.md) 选首屏骨架与跨屏节奏，不默认左右对半切分 | 工作区结构：`a slim icon rail and open analytical workspace` / `a compact left sidebar and asymmetric modules` / `a narrow left queue and continuous right inspection stage` / `an unboxed flow structured by 1px hairline dividers`<br>落地页多样首屏与跨屏结构：`centered sculptural hero object with generous surrounding space` / `full-bleed editorial visual stage with overlaid display typography` / `oversized architectural typography spanning the grid` / `product interface or tactile instrument as the hero stage`，向下衔接 `staggered editorial narrative flow, frameless spec list, and signature closing CTA carrier with footer` |
 | **4. `<单个重色锚点与单点高亮范围>`** | 全图只设 **1 处**重色重心（哑光黑或契合产品气质的**低明度浓郁深色区块/主视觉载体**），搭配 **5% 单峰/单点强调色**；或直接沿用存量品牌色 | 单张重色聚焦卡／主视觉载体：`a single <matte-obsidian / deep low-value tone fitting the domain> spotlight card (or hero showcase stage) and subtle <contrasting or tonal modern accent> pills`<br>右侧独立面板＋单柱高亮：`a sleek dark-charcoal <virtual card / inspector> panel and a single <modern accent hue> highlighted peak column`<br>深色通栏点睛区块（长页适用）：`one deep <low-value domain hue> contrast section anchoring the vertical rhythm, with a single <accent hue> primary CTA pill`<br>存量品牌色继承：`one <存量品牌主色描述> focal card with restrained matching highlights` |
-| **5. `<2–3 个图形化微组件>`** | 按页面要回答的问题任选 2–3 项；工作区图表非核心项退回浅灰或斜纹灰，落地页选用契合品类的实样、图解或凭据载体 | 工作区数据构件：`one refined primary figure with muted gray decimals` / `vertical pill-shaped capsule charts where most bars are soft diagonal-hatched gray and only one peak bar is highlighted` / `a horizontal segmented capsule bar` / `a circular tick-marked radial dial` / `a clean visual node routing flow` / `compact aligned rows with subtle status pills`<br>落地页叙事与实证构件：`staggered editorial photography and anatomical diagram callouts` / `frameless hairline specification ledger` / `tactile interactive product micro-cards or audio/hardware controls` / `a ticket-style or terminal-command closing CTA block and monumental wordmark footer` |
+| **5. `<2–3 个图形化微组件>`** | 按页面要回答的问题任选 2–3 项；工作区图表非核心项退回浅灰或斜纹灰，落地页选用契合品类的实样、图解或专属载体 | 工作区数据构件：`one refined primary figure with muted gray decimals` / `vertical pill-shaped capsule charts where most bars are soft diagonal-hatched gray and only one peak bar is highlighted` / `a horizontal segmented capsule bar` / `a circular tick-marked radial dial` / `a clean visual node routing flow` / `compact aligned rows with subtle status pills`<br>落地页叙事与实证构件：`staggered editorial photography and anatomical diagram callouts` / `frameless hairline specification ledger` / `tactile interactive product micro-cards or audio/hardware controls` / `a signature closing CTA block drawn from the product's own world, with a footer in the same visual language` |
 
 - 类比应描述体验或组织方式，而非堆叠风格名。若“杂志”“生活方式”带入无关静物、纸纹或口号，移除歧义，不继续堆修饰词。
 - 参考字体拆成字形、字重、比例与间距，不把英文字体类别直接翻译为中文宋体或手写字。没有既有规范时选择少量自洽规则，不把某一套配色、材质或字体固定为所有产品的套餐。
 - **存量项目局部改版或新增页面时**：
   - **无参考图（延续既有品牌规范新建页面）**：直接在上方 5 槽位模板的槽位 2 与槽位 4 中填入存量项目的真实底色与品牌主色。
-  - **带 `--ref` 传入存量截图（改图模式）**：以明确的变化指令开头——`Keep the reference image's exact <保留的侧栏/顶栏与小比例规范> and <存量主辅色描述> palette, but completely replace <目标区域> with a new Simplified Chinese subpage for <新页面领域>. Feature <槽位 4 重心锚点> and <槽位 5 图形微组件>, clean abstract icons, no third-party brand logos.`
+  - **带 `--ref` 传入存量截图（改图模式）**：以明确的变化指令开头——`Keep the reference image's exact <保留的侧栏/顶栏与小比例规范> and <存量主辅色描述> palette, but completely replace <目标区域> with a new <界面语言> subpage for <新页面领域>. Feature <槽位 4 重心锚点> and <槽位 5 图形微组件>, clean abstract icons, no third-party brand logos.`
 
 隐藏交互与其他状态保留在设计说明中，不要求全部画进一张图。
 
@@ -103,7 +103,7 @@
 
 1. **先定产品气质、首屏骨架与 4 段纵向节奏**：
    - 按 [说服型骨架](direction-persuasion.md) 选择与产品匹配的**首屏构图**（如居中器物/实样、满版影像压字、画面即界面/乐器/硬件、跨栏巨型排字、瑞士网格拼贴、左文右图特写等），不同产品绝不重复同一种首屏套路。
-   - 安排从顶栏到页脚的 **4 个异构纵向区块**（例如：① 顶栏＋首屏主舞台 → ② 高低错落画报叙事或剖面图解 → ③ 无框细线规格台账或可交互产品实样 → ④ 专属行动载体如凭据卡/终端命令卡＋大字标页脚），相邻两屏不共用同一种构图。
+   - 安排从顶栏到页脚的 **4 个左右的纵向区块**，每个区块长什么样从这个产品的内容和方向里推，相邻两屏不共用同一种构图，结尾的行动区和页脚不退回默认表单。
 2. **按接口能力选整张或分段（同样遵循 45–65 词精简法则）**：
    - 画布在可读字号下能容纳本次区块时，直接用纵向画布（`--size 1024x1536`）一次生成，并在提示词开头明确声明 `Full-length desktop landing page UI design (1024x1536 vertical scroll view from top navbar to footer), wide desktop layout proportions, NOT a mobile screen`，同时锁死 `delicate small-scale desktop proportions, petite body typography contrasted with expressive display headlines, generous open whitespace`。
    - 页面极长、一次生成会让正文过小时，在区块边界分段（如 `--size 1536x1024`）。先生成并检查第一段，把统一规则和第一段参考（`--ref`）用于后续片段；每次提示明确本段包含哪些区块、是否含导航或页脚，接缝处不重复标题或顶栏。
@@ -124,7 +124,7 @@
    - **完整落地页／品牌长页**：首屏给足舒适的桌面视口尺度（如 `min-height: clamp(640px, 82vh, 880px)`），后续每个模块必须主动放大上下内边距（`padding-block: clamp(88px, 9vw, 136px)`），模块标题与内容区之间保持 `40px–64px` 间距，让整页在 `1440px` 视口下自然展开到 `3200px–4800px` 的真实网页高度，消除生图模块挨得过近的局促感。
    - **后台与产品工作区**：去掉生图外围的窗口外框与画布留边，让界面自然铺满视口；主画布与卡片间距保持 `20px–28px`，卡片内边距保持 `22px–28px`，表格与列表单行高度保持 `44px–56px` 的真实可点击尺度。
    - **存量项目**：默认在现有路由、组件树、样式系统与设计变量内实现；现有组件能表达时只调整布局和设计变量，不因参考图复杂就重建整套组件库。
-3. **文案合理润色与彻底清除非汉字伪字**：
-   生图中的小字常有笔画粘连的“伪汉字/非汉字乱码”、繁体字或生硬词句。实现代码时，**只沿用原图的字号层级对比与段落节奏，允许自由微调、润色和补全具体文案**：所有伪造乱码字符、非汉字杂乱符号与繁体字必须 100% 替换为自然通顺的规范简体中文（仅在确有需要时保留 `VCO`、`AUV`、`HRV`、`USD` 等标准英文缩写），绝不死板照抄图内文字。
+3. **文案重写，清掉伪字**：
+   生图中的小字常有笔画粘连的乱码伪字、用错的字形或生硬词句。实现代码时，**只沿用原图的字号层级对比与段落节奏，允许自由微调、润色和补全具体文案**：乱码伪字、杂乱符号和用错的字形，全部换成产品面向用户的语言里自然通顺的文案，行业里通用的缩写可以保留，不照抄图内文字。
 4. **真实画面与操作复验**：
    按 [工具](tools.md) 用 `shoot.mjs` 在桌面与窄屏视口检查实际渲染并操作主要流程：确认真正用于字符渲染的字体、行高、模块上下留白、对比度和换行符合真实 UI 标准，长文本、列表增长与窄屏切换均不破坏布局。

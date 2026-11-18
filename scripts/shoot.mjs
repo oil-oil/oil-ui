@@ -22,11 +22,11 @@ const HELP = `常用命令：
   --out <目录>          输出目录，默认 ./shots
   --root <目录>         本地页面的静态服务根目录，默认按页面和 cwd 推断；共享资源用项目根
   --size <尺寸,...>     默认 390x844；desktop=1440x900，phone/mobile=390x844，可混用数字尺寸
-  --states <a,b,...>    依次用 ?state=<名字> 打开并各截一张
+  --states <a,b,...>    依次用 ?state=<名字> 打开并各截一张；页面本来就读这个参数时才用，交互后的画面用 --steps
   --param <名字>        状态参数名，默认 state
   --query <查询参数>    给地址加参数，例如 --query "a=1&b=2"；可和 --states 一起用
   --zoom <倍数,...>     默认 1；例如 --zoom 1,2，每个倍数各出一套；配 --evidence 时覆盖默认截图倍数
-  --full                截整页，默认只截视口
+  --full                截整页，默认只截视口；页面在内部容器里滚动或有贴住视口的固定外壳时会提示改截视口
   --selector <选择器>   只截匹配元素的区域，自动滚入视口；不与 --full、--record、--frames、--motion、--entry、--evidence 同用
   --thumb               快速缩略图：按 0.5 倍分辨率截视口，缩短等待并跳过可读性检查
   --mask                另截一份遮掉全部文字的版本
@@ -89,7 +89,8 @@ const HELP = `常用命令：
 重跑后截图仍超时则继续后面的项，返回码 1；其他协议超时或浏览器意外断开时退出。
 多项命令每完成一项向标准错误打印进度，标准输出仍是最后的汇总。
 每张图检查控制台错误、横向溢出和加载失败的图片，明细写进 report.json；
-可读性与渲染提示写进 lint 字段。录屏需要 ffmpeg，没有时只留帧。
+可读性与渲染提示写进 lint 字段：文字对比度、过小的字、过紧的行高、停在透明的内容、
+手机上小于 16px 的输入框、打开的弹窗里够不着的操作按钮。录屏需要 ffmpeg，没有时只留帧。
 
 和 --states 一起用：
   普通截图会在每个状态执行每组 --steps；动效探测和动作录屏只从第一个状态、第一种尺寸开始，
@@ -798,9 +799,11 @@ async function check() {
 // 在页面里运行，不能引用外层变量。
 function lintPage() {
   const LABELS = {
-    contrastLow: "文字对比度不达标（正文低于 3:1，大字低于 2.5:1）",
+    contrastLow: "文字对比度不达标（14px 以下的小字和占位文字低于 4.5:1，其他文字低于 3:1，大字低于 2.5:1）",
     smallText: "文字小于 11px", tightLeading: "多行正文行高过紧",
     stuck: "首屏有内容停在透明状态（出场动画没触发？）",
+    inputZoom: "手机上输入框字号小于 16px（聚焦时 iOS 会自动放大页面）",
+    dialogActions: "弹窗的操作按钮不在视口内（要滚动才够得着）",
   };
   const found = new Map();
   const describe = (el) => {
@@ -946,6 +949,7 @@ function lintPage() {
     const sample = textRect(el) || (control ? r : null);
     if (!sample) continue; // 普通文字没有可见 Range 时不能拿按钮的图标/内边距代替。
     if (size < 11 && !el.closest("sup,sub") && !scaledDown(el)) add("smallText", el, size + "px");
+    if (control && innerWidth <= 480 && size < 16 && !scaledDown(el)) add("inputZoom", el, size + "px");
     let ink = s, hasText = true;
     if (control) {
       const value = el.tagName === "SELECT" ? [...el.selectedOptions].map((o) => o.text).join("") : el.value;
@@ -963,7 +967,9 @@ function lintPage() {
       const large = !control && (size >= 24 || (size >= 18.6 && parseInt(s.fontWeight, 10) >= 700));
       // 伪元素不在命中栈里，沿用底板免误报；兄弟底板已按绘制顺序采到，极低对比度也照常报。
       if (!(contrast < 1.5 && hasOverlayPlate(el, sample))) {
-        if (contrast < (large ? 2.5 : 3.0)) add("contrastLow", el, contrast.toFixed(2) + ":1");
+        // 字越小越靠对比度撑着：小字和占位文字按 4.5:1，其余沿用 3:1。
+        const floor = large ? 2.5 : (size < 14 || ink !== s) ? 4.5 : 3.0;
+        if (contrast < floor) add("contrastLow", el, contrast.toFixed(2) + ":1");
       }
     }
     // 正文：两行以上的段落
@@ -993,6 +999,31 @@ function lintPage() {
     if (/absolute|fixed/.test(hs.position) || hs.pointerEvents === "none" || css(el).visibility === "hidden") continue;
     add("stuck", el);
   }
+
+  // 打开着的表单型弹窗：提交按钮和最后一个按钮要在视口里，也不被弹窗内部的滚动区裁掉。
+  const reachable = (el, root) => {
+    const r = el.getBoundingClientRect();
+    if (r.bottom > innerHeight + 1 || r.top < -1 || r.right > innerWidth + 1 || r.left < -1) return false;
+    for (let node = el.parentElement; node && node !== root.parentElement; node = node.parentElement) {
+      if (!["auto", "scroll", "hidden", "clip"].includes(css(node).overflowY)) continue;
+      const nr = node.getBoundingClientRect();
+      if (r.bottom > nr.bottom + 1 || r.top < nr.top - 1) return false;
+    }
+    return true;
+  };
+  const missedActions = new Set();
+  for (const dialog of document.querySelectorAll("dialog[open],[role='dialog'],[role='alertdialog'],[aria-modal='true']")) {
+    if (dialog.closest("[hidden],[aria-hidden='true'],#oil-mark") || !shown(dialog) || opacity(dialog) <= 0.05) continue;
+    const dr = dialog.getBoundingClientRect();
+    if (dr.bottom <= 0 || dr.top >= innerHeight) continue;
+    if (!dialog.querySelector("form,input:not([type='hidden']),textarea,select")) continue;
+    const buttons = [...dialog.querySelectorAll("button,[role='button'],input[type='submit'],input[type='button']")]
+      .filter((b) => shown(b) && !b.matches(":disabled") && opacity(b) > 0.05);
+    if (!buttons.length) continue;
+    const targets = new Set([buttons[buttons.length - 1], ...buttons.filter((b) => b.getAttribute("type") === "submit")]);
+    for (const button of targets) if (!reachable(button, dialog)) missedActions.add(button);
+  }
+  for (const button of missedActions) add("dialogActions", button);
 
   return [...found.values()];
 }
@@ -1054,6 +1085,28 @@ async function selectorClip() {
     if (transportFailure) throw error;
     await cleanup(); fail(error.message);
   }
+}
+// 整页截图不适合的两种页面：内容在内部容器里滚动，或有贴住视口的固定外壳。只提示，不改行为。
+async function fullPageNote() {
+  const kind = await evaluate(`(() => {
+    const root = document.scrollingElement || document.documentElement;
+    const tall = (el) => el.getBoundingClientRect().height >= innerHeight * 0.6;
+    if (root.scrollHeight <= innerHeight + 2) {
+      for (const el of document.body.querySelectorAll("*")) {
+        if (/auto|scroll/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight + 40 && el.clientHeight >= innerHeight * 0.4) return "inner";
+      }
+      return "";
+    }
+    for (const el of document.body.querySelectorAll("*")) {
+      const s = getComputedStyle(el), r = el.getBoundingClientRect();
+      if (/fixed|sticky/.test(s.position) && tall(el) && r.width >= 40 && r.width < innerWidth * 0.9 && s.visibility !== "hidden" && s.display !== "none") return "shell";
+    }
+    return "";
+  })()`);
+  const note = kind === "inner" ? "--full：页面本身不滚动，内容在内部滚动区里，整页图和视口图相同；这类页面按视口图取证"
+    : kind === "shell" ? "--full：页面有贴住视口的固定侧栏或外壳，整页图里它只出现在第一屏；这类页面按视口图取证" : "";
+  if (note && !notices.includes(note)) notices.push(note);
+  return note;
 }
 async function screenshot(file, full, clipOverride = null) {
   let clip = clipOverride;
@@ -2014,9 +2067,10 @@ async function captureBatch(selectedStates, selectedZooms, selectedGroups, useMa
       const file = join(out, `${name}.png`);
       await item(`${name}.png`, meta, async () => {
         const animationWaitMs = await prepare();
+        const note = flags.has("full") && !selector ? await fullPageNote() : "";
         await screenshot(file, flags.has("full"), selector ? await selectorClip() : thumb ? { x: 0, y: 0, width: w, height: h, scale: 0.5 } : null);
         const issues = await check(), hints = thumb ? [] : await lint();
-        entry = { file: basename(file), ...meta, ...(thumb ? { thumb: true } : {}), animationWaitMs, issues, lint: hints };
+        entry = { file: basename(file), ...meta, ...(thumb ? { thumb: true } : {}), animationWaitMs, issues, lint: hints, ...(note ? { note } : {}) };
         lines.push(`${basename(file)}${issues.length ? "  ⚠ " + issues.join("；") : ""}${hints.length ? "  ◇ 可读性提示：" + lintLine(hints) : ""}`);
         report.push(entry); shots.push({ path: file, label: state || "page" });
         if (batchMode) targetShots.push({ path: file, label: [meta.name, state, suffix].filter(Boolean).join(" · ") });
