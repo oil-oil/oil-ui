@@ -15,12 +15,13 @@ SH = shutil.which("sh")
 
 # 配置来自测试文件，不能依赖被安全环境白名单过滤的假环境变量。
 FAKE_NPX = f"""#!{sys.executable}
-import json, os, sys
+import json, os, sys, time
 from pathlib import Path
 c = json.loads(Path(__file__).with_name('settings.json').read_text())
 with Path(c['log']).open('a') as log: log.write(' '.join(sys.argv[1:])+'\\n')
 Path(c['env_log']).write_text(json.dumps({{k: k in os.environ for k in
-    ['AWS_SECRET_ACCESS_KEY','OPENAI_API_KEY','NODE_OPTIONS','NPM_TOKEN','OIL_TOKEN','CI']}}))
+    ['AWS_SECRET_ACCESS_KEY','OPENAI_API_KEY','NODE_OPTIONS','NPM_TOKEN','OIL_TOKEN','CI','OIL_DOWNLOAD_TIMEOUT','OIL_UPDATE_TIMEOUT']}}))
+if c.get('sleep'): time.sleep(float(c['sleep']))
 if c.get('stderr'): print(c['stderr'], file=sys.stderr)
 if c.get('json'): print(c['json'])
 if c.get('fail'): sys.exit(1)
@@ -99,6 +100,7 @@ class CheckUpdateTest(unittest.TestCase):
             'log': str(self.npx_log), 'env_log': str(self.tmp / 'env.json'),
             'stderr': extra.get('FAKE_NPX_STDERR'), 'json': extra.get('FAKE_NPX_JSON'),
             'fail': extra.get('FAKE_NPX_FAIL'), 'node_version': extra.get('FAKE_NODE_VERSION'),
+            'sleep': extra.get('FAKE_NPX_SLEEP'),
         }), encoding='utf-8')
         env = {k: v for k, v in os.environ.items() if not k.startswith("OIL_")}
         env.update(HOME=str(self.tmp / "home"), APPDATA=str(self.tmp / "config"), LOCALAPPDATA=str(self.tmp / "state"),
@@ -156,7 +158,7 @@ class CheckUpdateTest(unittest.TestCase):
             AWS_SECRET_ACCESS_KEY='dummy-only-aws', OPENAI_API_KEY='dummy-only-openai',
             NODE_OPTIONS='--require /nonexistent-oil-test.js', NPM_TOKEN='dummy-only-npm',
             OIL_TOKEN='dummy-only-oil'))
-        self.assertIn('-y github:oil-oil/oil-cli#e6ee580c01e854919ee50ef1f3de6876c3c52c18 update', self.npx_calls()[0])
+        self.assertIn('-y github:oil-oil/oil-cli#3a9f2b417d0f3dfe5a143dbd4c96017e7f7e8ded update', self.npx_calls()[0])
         seen = json.loads((self.tmp / 'env.json').read_text(encoding="utf-8"))
         for key in ('AWS_SECRET_ACCESS_KEY','OPENAI_API_KEY','NODE_OPTIONS','NPM_TOKEN'):
             self.assertFalse(seen[key], key)
@@ -395,6 +397,49 @@ class CheckUpdateTest(unittest.TestCase):
         self.assertEqual(self.run_check(OIL_NO_UPDATE_CHECK="1", XDG_STATE_HOME=str(self.tmp / "s3")), "")
         (self.skill / ".git").mkdir()
         self.assertEqual(self.run_check(XDG_STATE_HOME=str(self.tmp / "s4")), "")
+
+    def test_download_timeout_passes_timeout_env_surfaces_notice_and_retries_on_change(self):
+        self.login()
+        out = self.run_check(OIL_DOWNLOAD_TIMEOUT="450", FAKE_NPX_FAIL="1",
+                             FAKE_NPX_JSON='{"error":"download_timeout","message":"SECRET"}')
+        self.assertIn("安装包下载超时", out)
+        self.assertIn("OIL_UPDATE_TIMEOUT=900", out)
+        self.assertIn("OIL_DOWNLOAD_TIMEOUT=600", out)
+        self.assertNotIn("SECRET", out)
+        seen = json.loads((self.tmp / "env.json").read_text(encoding="utf-8"))
+        self.assertTrue(seen["OIL_DOWNLOAD_TIMEOUT"])
+
+        # 调整 OIL_DOWNLOAD_TIMEOUT 后，不等待冷却即可立即重试
+        self.assertIn("已自动更新", self.run_check(OIL_DOWNLOAD_TIMEOUT="600"))
+
+        # 英文与子进程超时的处理
+        shutil.rmtree(self.tmp / "state", ignore_errors=True)
+        (self.skill / "SKILL.md").write_text('---\nname: oil-ui-pro\nmetadata:\n  version: "0.10.0"\n---\n', encoding="utf-8")
+        timed_out = self.run_check(LANG="en_US.UTF-8", OIL_UPDATE_TIMEOUT="50ms", FAKE_NPX_SLEEP="0.3")
+        self.assertIn("Package download timed out", timed_out)
+        self.assertIn("OIL_UPDATE_TIMEOUT=900", timed_out)
+        self.assertIn("OIL_DOWNLOAD_TIMEOUT=600", timed_out)
+
+        # Windows (nt) 提示不拼接 POSIX 环境变量前缀语法
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("check_update", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(mod)
+        prev_lang = os.environ.get("LANG")
+        try:
+            os.environ["LANG"] = "zh_CN.UTF-8"
+            zh_nt = mod.notice("oil-ui-pro", "0.10.0", "99.0.0", "", "download_timeout", platform_name="nt")
+            self.assertIn("请设置环境变量 OIL_UPDATE_TIMEOUT=900 与 OIL_DOWNLOAD_TIMEOUT=600", zh_nt)
+            self.assertNotIn("OIL_DOWNLOAD_TIMEOUT=600 \"", zh_nt)
+            os.environ["LANG"] = "en_US.UTF-8"
+            en_nt = mod.notice("oil-ui-pro", "0.10.0", "99.0.0", "", "download_timeout", platform_name="nt")
+            self.assertIn("Set OIL_UPDATE_TIMEOUT=900 and OIL_DOWNLOAD_TIMEOUT=600, then run", en_nt)
+        finally:
+            if prev_lang is None:
+                os.environ.pop("LANG", None)
+            else:
+                os.environ["LANG"] = prev_lang
 
 
 if __name__ == "__main__":
