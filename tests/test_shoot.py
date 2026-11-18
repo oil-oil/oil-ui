@@ -1527,6 +1527,85 @@ input,textarea,select{font:16px/1.6 sans-serif;background:white;color:#111;borde
         for example, expected in zip(hints['contrastLow']['examples'], ['#low-value', '#low-placeholder', '#low-opacity']):
             self.assertIn(expected, example)
 
+    def test_lint_small_text_and_placeholders_need_4_5_contrast(self):
+        hints = self.lint_fixture("""
+<p id="small-soft" style="font-size:12px;color:#8a8a8a">Small secondary text at 3.45 to 1</p>
+<p id="edge-soft" style="font-size:14px;color:#8a8a8a">Fourteen pixel text keeps the 3.0 floor</p>
+<p id="body-soft" style="color:#8a8a8a">Body secondary text keeps the 3.0 floor</p>
+<p id="small-ok" style="font-size:12px;color:#666">Small text at 5.7 to 1 passes</p>
+<input id="placeholder" placeholder="Search tools"><input id="value" value="Typed value" style="color:#8a8a8a">
+<input id="placeholder-ok" placeholder="Readable hint" class="ok">
+""", """
+input{font:16px/1.6 sans-serif;background:white;color:#111;border:1px solid #333}
+input::placeholder{color:#8a8a8a;opacity:1}input.ok::placeholder{color:#666}
+""")
+        self.assertEqual(set(hints), {'contrastLow'})
+        self.assertEqual(hints['contrastLow']['count'], 2)
+        self.assertIn('4.5:1', hints['contrastLow']['label'])
+        for example, expected in zip(hints['contrastLow']['examples'], ['#small-soft', '#placeholder']):
+            self.assertIn(expected, example)
+
+    def test_lint_flags_small_text_controls_on_phone_viewports_only(self):
+        markup = """
+<input id="small" value="Fourteen" style="font-size:14px"><textarea id="fine">Sixteen</textarea>
+<select id="pick" style="font-size:13px"><option>One</option></select>
+<input id="off" value="Disabled" style="font-size:12px" disabled><input type="checkbox" style="font-size:12px">
+<button style="font-size:14px">Fourteen pixel button</button>
+"""
+        style = 'input,textarea,select,button{font:16px/1.6 sans-serif;background:white;color:#111;border:1px solid #333}'
+        hints = self.lint_fixture(markup, style, size='390x844')
+        self.assertEqual(set(hints), {'inputZoom'})
+        self.assertEqual(hints['inputZoom']['count'], 2)
+        for example, expected in zip(hints['inputZoom']['examples'], ['input#small', 'select#pick']):
+            self.assertIn(expected, example)
+        self.assertEqual(self.lint_fixture(markup, style), {})
+
+    def test_lint_flags_dialog_actions_that_need_scrolling(self):
+        style = """
+dialog{position:fixed;inset:0;margin:0;padding:16px;border:0;width:auto;height:auto;max-width:none;max-height:none;overflow:auto;background:white}
+.body{height:1400px}.sheet{position:fixed;inset:0;display:flex;flex-direction:column;background:white}
+.sheet .scroll{flex:1;overflow:auto}.sheet footer{padding:12px}
+input,button{font:16px/1.6 sans-serif;background:white;color:#111;border:1px solid #333}
+"""
+        hints = self.lint_fixture("""<dialog open><form><input value="Name"><div class="body">Long form</div>
+<button type="button">Cancel</button><button type="submit" id="save">Save tool</button></form></dialog>""", style, size='390x844')
+        self.assertEqual(set(hints), {'dialogActions'})
+        self.assertEqual(hints['dialogActions']['count'], 1)
+        self.assertIn('button#save', hints['dialogActions']['examples'][0])
+        # Clipped by the dialog's own scroller even though the point is inside the viewport.
+        hints = self.lint_fixture("""<div role="dialog" style="position:fixed;left:0;top:0;width:360px;height:300px;overflow:auto;background:white">
+<input value="Name"><div class="body">Long form</div><button id="hidden-save">Save</button></div>""", style, size='390x844')
+        self.assertEqual(set(hints), {'dialogActions'})
+        self.assertIn('#hidden-save', hints['dialogActions']['examples'][0])
+        # Actions kept in a fixed footer stay reachable; dialogs without form controls and closed dialogs are spared.
+        hints = self.lint_fixture("""<div role="dialog" class="sheet"><div class="scroll"><input value="Name"><div class="body">Long form</div>
+<button type="button">Add another row</button></div><footer><button type="submit">Save tool</button></footer></div>
+<div role="dialog" style="position:fixed;right:0;bottom:0;width:10px;height:10px;overflow:hidden"><div class="body">Notes</div><button>Close</button></div>
+<dialog><form><input value="Closed"><div class="body">Closed</div><button type="submit">Save</button></form></dialog>""", style, size='390x844')
+        self.assertEqual(hints, {})
+
+    def test_full_page_notice_for_inner_scrollers_and_fixed_shells(self):
+        def run(markup, style, *args):
+            self.page.write_text('<!doctype html><meta charset="utf-8"><link rel="icon" href="data:,"><style>'
+                                 + style + '</style>' + markup, encoding='utf-8')
+            output = self.folder / 'full-note'
+            result = self.shoot(output, '--size', '1000x700', '--force', *args)
+            return result.stdout, json.loads((output / 'report.json').read_text(encoding='utf-8'))[0]
+        shell = 'html,body{height:100%;margin:0;overflow:hidden}.pane{height:100vh;overflow:auto}.tall{height:2400px}'
+        stdout, entry = run('<div class="pane"><div class="tall">Inner scroller</div></div>', shell, '--full')
+        self.assertIn('页面本身不滚动', stdout)
+        self.assertIn('页面本身不滚动', entry['note'])
+        stdout, entry = run('<div class="pane"><div class="tall">Inner scroller</div></div>', shell)
+        self.assertNotIn('--full：', stdout)
+        self.assertNotIn('note', entry)
+        fixed = 'body{margin:0}aside{position:fixed;left:0;top:0;width:220px;height:100vh;background:#eee}main{margin-left:220px;height:2400px}'
+        stdout, entry = run('<aside>Sidebar</aside><main>Long page</main>', fixed, '--full')
+        self.assertIn('固定侧栏或外壳', stdout)
+        stdout, entry = run('<header style="position:sticky;top:0;height:56px;background:#eee">Bar</header><main style="height:2400px">Long page</main>',
+                            'body{margin:0}', '--full')
+        self.assertNotIn('--full：', stdout)
+        self.assertNotIn('note', entry)
+
     def test_horizontal_overflow_is_only_an_issue_with_three_visible_examples(self):
         markup = '''<div style="width:1500px;display:none">Hidden</div>
 <div style="width:1500px;visibility:hidden">Invisible</div>
