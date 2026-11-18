@@ -112,7 +112,7 @@ The open-source version takes a new page from a blank start to a distinctive des
 | Effects such as light trails, dot patterns, and flowing gradients | | ✓ |
 | Scene layouts, visuals, and state checks for mini-games | | ✓ |
 
-Oil UI Pro costs $9.99: a one-time purchase with lifetime updates (+ 100 image generation credits). Get it at [ui.oiloil.org/pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=comparison-table-pro), or run `npx github:oil-oil/oil-cli install oil-ui-pro` to let your agent guide sign-in, payment, and installation.
+Oil UI Pro costs $14.99: a one-time purchase with lifetime updates (+ 100 image generation credits). Get it at [ui.oiloil.org/pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=comparison-table-pro), or run `npx github:oil-oil/oil-cli install oil-ui-pro` to let your agent guide sign-in, payment, and installation.
 
 ## Version checks
 
