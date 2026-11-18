@@ -1584,6 +1584,32 @@ input,button{font:16px/1.6 sans-serif;background:white;color:#111;border:1px sol
 <dialog><form><input value="Closed"><div class="body">Closed</div><button type="submit">Save</button></form></dialog>""", style, size='390x844')
         self.assertEqual(hints, {})
 
+    def test_lint_flags_boxed_grouping_and_spares_fields_tables_and_floating_panels(self):
+        style = """
+.card{border:1px solid #d5d8ca;border-radius:12px;padding:12px;margin:10px 0;width:600px;min-height:60px}
+.chip{display:inline-block;border:1px solid #ccc;border-radius:6px;padding:6px 10px;margin-right:6px;min-height:24px}
+.plain{padding:12px;margin:10px 0;width:600px;min-height:60px;background:#f4f3ee}
+input,textarea{font:16px/1.6 sans-serif;border:1px solid #333;width:300px;height:30px;display:block;margin:6px 0}
+table{border-collapse:collapse}td{border:1px solid #999;padding:8px;width:140px;height:30px}
+.float{position:absolute;top:10px;right:10px;border:1px solid #333;width:200px;height:80px}
+"""
+        hints = self.lint_fixture("""
+<section class="card">Saved so far 3,230</section><section class="card">This week 270</section>
+<section class="card">Recent weeks<span class="chip">W25</span><span class="chip">W26</span><span class="chip">W27</span></section>
+<section class="card">Milestones</section>""", style, size='1000x900')
+        self.assertEqual(set(hints), {'boxedGroups'})
+        self.assertEqual(hints['boxedGroups']['count'], 2)
+        notes = ' '.join(hints['boxedGroups']['examples'])
+        self.assertIn('首屏 4 块各自加框', notes)
+        self.assertIn('框里又有 3 个加框的块', notes)
+        # Grouped by spacing and tint, fields inside one card, a bordered table and a floating panel are spared.
+        hints = self.lint_fixture("""
+<section class="plain">Saved so far</section><section class="plain">This week</section><section class="plain">Recent</section>
+<form class="card">Contact<input value="Name"><textarea>Note</textarea></form>
+<section class="card">Ledger<table><tr><td>Week 1</td><td>10</td></tr><tr><td>Week 2</td><td>20</td></tr></table></section>
+<div class="float">Floating summary</div>""", style, size='1000x900')
+        self.assertEqual(hints, {})
+
     def test_full_page_notice_for_inner_scrollers_and_fixed_shells(self):
         def run(markup, style, *args):
             self.page.write_text('<!doctype html><meta charset="utf-8"><link rel="icon" href="data:,"><style>'

@@ -90,7 +90,7 @@ const HELP = `常用命令：
 多项命令每完成一项向标准错误打印进度，标准输出仍是最后的汇总。
 每张图检查控制台错误、横向溢出和加载失败的图片，明细写进 report.json；
 可读性与渲染提示写进 lint 字段：文字对比度、过小的字、过紧的行高、停在透明的内容、
-手机上小于 16px 的输入框、打开的弹窗里够不着的操作按钮。录屏需要 ffmpeg，没有时只留帧。
+手机上小于 16px 的输入框、打开的弹窗里够不着的操作按钮、用边框分组过多。录屏需要 ffmpeg，没有时只留帧。
 
 和 --states 一起用：
   普通截图会在每个状态执行每组 --steps；动效探测和动作录屏只从第一个状态、第一种尺寸开始，
@@ -804,6 +804,7 @@ function lintPage() {
     stuck: "首屏有内容停在透明状态（出场动画没触发？）",
     inputZoom: "手机上输入框字号小于 16px（聚焦时 iOS 会自动放大页面）",
     dialogActions: "弹窗的操作按钮不在视口内（要滚动才够得着）",
+    boxedGroups: "用边框分组过多（首屏多块各自加框，或框里又套着几个加框的小块）",
   };
   const found = new Map();
   const describe = (el) => {
@@ -999,6 +1000,31 @@ function lintPage() {
     if (/absolute|fixed/.test(hs.position) || hs.pointerEvents === "none" || css(el).visibility === "hidden") continue;
     add("stuck", el);
   }
+
+  // 用边框分组：四边都有可见边框、装着文字的块。首屏由多块各自加框的卡片堆成，或一块卡片里又摆着几个加框的小块。
+  // 输入框、表格、图片和浮层里的边框各有职责，不算；绝对定位的浮起块也不算。
+  const BOX_STACK = 4;
+  const framedInside = "table,dialog,[role='dialog'],[role='alertdialog'],[role='menu'],[role='listbox'],[role='tooltip'],[popover],#oil-mark";
+  const framed = (el) => {
+    const s = css(el);
+    if (/absolute|fixed/.test(s.position)) return false;
+    return ["Top", "Right", "Bottom", "Left"].every((side) => parseFloat(s["border" + side + "Width"]) >= 1
+      && !/none|hidden/.test(s["border" + side + "Style"]) && rgba(s["border" + side + "Color"]).a >= 0.15);
+  };
+  const boxes = all.filter((el) => el !== document.body && !el.matches("input,select,textarea,img,video,canvas,iframe,picture,hr")
+    && !el.closest(framedInside) && shown(el) && opacity(el) > 0.05 && (el.innerText || "").trim().length > 0 && framed(el));
+  const sized = (el, w, h) => { const r = el.getBoundingClientRect(); return r.width >= w && r.height >= h; };
+  const cards = boxes.filter((el) => sized(el, 120, 48));
+  const cardSet = new Set(cards);
+  const outer = cards.filter((el) => { for (let p = el.parentElement; p; p = p.parentElement) if (cardSet.has(p)) return false; return true; });
+  const firstScreen = outer.filter((el) => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; });
+  if (firstScreen.length >= BOX_STACK) add("boxedGroups", firstScreen[0], "首屏 " + firstScreen.length + " 块各自加框");
+  const inner = new Map();
+  for (const el of boxes) {
+    if (!sized(el, 24, 24)) continue;
+    for (let p = el.parentElement; p; p = p.parentElement) if (cardSet.has(p)) { inner.set(p, (inner.get(p) || 0) + 1); break; }
+  }
+  for (const [card, n] of inner) if (n >= 2) add("boxedGroups", card, "框里又有 " + n + " 个加框的块");
 
   // 打开着的表单型弹窗：提交按钮和最后一个按钮要在视口里，也不被弹窗内部的滚动区裁掉。
   const reachable = (el, root) => {
