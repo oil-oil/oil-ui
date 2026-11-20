@@ -1,8 +1,8 @@
 [English](README.md) · [中文](README.zh-CN.md) · 日本語 · [한국어](https://ui.oiloil.org/ko/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=lang-bar) · [Deutsch](https://ui.oiloil.org/de/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=lang-bar) · [Español](https://ui.oiloil.org/es/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=lang-bar)
 
-[![GitHub Stars](https://img.shields.io/github/stars/oil-oil/oil-ui?style=flat-square&color=292e2b)](https://github.com/oil-oil/oil-ui/stargazers) [![skills.sh](https://img.shields.io/badge/skills.sh-4.6K%2B_installs-4a5d4e?style=flat-square)](https://www.skills.sh/oil-oil/oil-ui/oil-ui) [![Live Gallery](https://img.shields.io/badge/live_gallery-117_examples-3d5a45?style=flat-square)](https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=hero-gallery) [![Blind Benchmark](https://img.shields.io/badge/blind_test-87.0%2F100_(15_runs)-5b533b?style=flat-square)](https://ui.oiloil.org/ja/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=guide-benchmark) [![License: MIT](https://img.shields.io/badge/license-MIT-60675f?style=flat-square)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/oil-oil/oil-ui?style=flat-square&color=292e2b)](https://github.com/oil-oil/oil-ui/stargazers) [![skills.sh](https://img.shields.io/badge/skills.sh-4.6K%2B_installs-4a5d4e?style=flat-square)](https://www.skills.sh/oil-oil/oil-ui/oil-ui) [![Live Gallery](https://img.shields.io/badge/live_gallery-143_examples-3d5a45?style=flat-square)](https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=hero-gallery) [![Blind Benchmark](https://img.shields.io/badge/blind_test-87.0%2F100_(15_runs)-5b533b?style=flat-square)](https://ui.oiloil.org/ja/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=guide-benchmark) [![License: MIT](https://img.shields.io/badge/license-MIT-60675f?style=flat-square)](LICENSE)
 
-**Oil UI** は、AI コーディングエージェント向けのインターフェース／UI・UX デザインスキルです。1 つの明確な方向性を推奨して実際のブラウザスクリーンショットをもとに磨き上げるか、比較を求められた場合は 3 つの異なる方向性を並べて検討します。117 件のライブ事例は [ui.oiloil.org](https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=intro-text) でご覧いただけます。
+**Oil UI** は、AI コーディングエージェント向けのインターフェース／UI・UX デザインスキルです。1 つの明確な方向性を推奨して実際のブラウザスクリーンショットをもとに磨き上げるか、比較を求められた場合は 3 つの異なる方向性を並べて検討します。143 件のライブ事例は [ui.oiloil.org](https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=intro-text) でご覧いただけます。
 
 ```bash
 npx skills add oil-oil/oil-ui
@@ -21,6 +21,14 @@ npx skills add oil-oil/oil-ui
 
 <p align="center">
   <a href="https://ui.oiloil.org/ja/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=showcase-banner"><img src="./assets/readme/showcase.en.webp" width="100%" alt="ギャラリーのハイライト：英語学習アプリ、音楽の年間まとめ、ハードウェアとコンポーネントライブラリの Web サイト、プロジェクト管理ツール、配車アプリ、音声アシスタント、チェックアウトのフロー、フィルムカメラ"></a>
+</p>
+
+### アートディレクション型ランディングページ（Oil UI Pro に無料同梱 `oil-art-landing`）
+
+通常のプロダクト UI や管理画面に加え、**Oil UI Pro** には専用コンパニオンスキル **`oil-art-landing`** が無料同梱されます。**デスクトップ＆モバイルアプリ向けの多彩なビジュアルアンカー**（赤外線フィルム、極地氷河、X 線暗室、温室モンステラ、苔とスレート、長虹ガラス、活版空押し、テラコッタ砂丘、光学氷塊、藍染絞りなど）とプロダクトに合わせた派生ルールを備え、3 方向の比較から前景レイヤー付きのリアルな Web ページ実装まで一貫対応します。[20 件のライブ事例を見る →](https://ui.oiloil.org/ja/art-landing/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=art-landing-banner)
+
+<p align="center">
+  <a href="https://ui.oiloil.org/ja/art-landing/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=art-landing-banner"><img src="./assets/readme/art-landing.webp" width="100%" alt="Oil Art Landing 事例ハイライト：Kova、Aperture、Cairn、Helixa、Riso、Aquarelle のデスクトップ事例と Duna、Kryo、Aizome のモバイルアプリ事例"></a>
 </p>
 
 ## インストール
@@ -102,8 +110,9 @@ DeepSeek Harness をお使いの場合はネイティブプラグイン [dsh-oil
 | コードと空間的な展開のコンテナを備えた 19 のカードのプロトタイプ | | ✓ |
 | 光の軌跡、ドットパターン、流れるグラデーションなどのエフェクト | | ✓ |
 | ミニゲームのシーンのレイアウト、ビジュアル、状態のチェック | | ✓ |
+| 無料同梱 `oil-art-landing`：デスクトップ＆モバイル向けの多彩なランディングページ表現＋プロダクト向け派生ルール、前景レイヤー付き実装に対応 | | ✓ |
 
-Oil UI Pro は $14.99（買い切り・生涯アップデート、画像生成 100 クレジット付き）です。[ui.oiloil.org/pro](https://ui.oiloil.org/ja/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=comparison-table-pro) でご購入いただけます。
+Oil UI Pro は $19.99（買い切り・生涯アップデート、画像生成 100 クレジットと `oil-art-landing` 無料同梱）です。[ui.oiloil.org/pro](https://ui.oiloil.org/ja/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=comparison-table-pro) でご購入いただけます。
 
 ## バージョンの確認
 

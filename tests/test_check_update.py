@@ -7,6 +7,7 @@ import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from unittest import mock
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "check_update.py"
@@ -28,6 +29,10 @@ if c.get('fail'): sys.exit(1)
 if '--path' in sys.argv:
     skill = Path(sys.argv[sys.argv.index('--path')+1])/'SKILL.md'
     skill.write_text(skill.read_text().replace('version: "0.10.0"','version: "99.0.0"'))
+    if c.get('companion'):
+        companion = skill.parent.parent / c['companion']
+        companion.mkdir(parents=True, exist_ok=True)
+        (companion / 'SKILL.md').write_text('---\\nname: ' + c['companion'] + '\\nmetadata:\\n  version: "99.0.0"\\n---\\n')
 """
 FAKE_NODE = f"""#!{sys.executable}
 import json
@@ -84,11 +89,19 @@ class CheckUpdateTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp)
 
-    def set_latest(self, version, free):
+    def set_latest(self, version, free, included=None, published=None):
         entry = {"latest": version, "history": [{"version": version, "notes": "- 动效改成三处基本动效。\n- 其他修正"}]}
         if free:
             entry["download_url"] = "https://example.com/oil-ui-pro.tar.gz"
-        Versions.payload = {"skills": {"oil-ui-pro": entry}}
+        if included is not None:
+            entry["included"] = included
+        skills = {"oil-ui-pro": entry}
+        for name in (included or []) if published is None else published:
+            skills[name] = {"latest": version, "history": []}
+        Versions.payload = {"skills": skills}
+
+    def set_current(self, version):
+        (self.skill / "SKILL.md").write_text(f'---\nname: oil-ui-pro\nmetadata:\n  version: "{version}"\n---\n', encoding="utf-8")
 
     def login(self):
         config = self.tmp / "config" / "oil"
@@ -100,7 +113,7 @@ class CheckUpdateTest(unittest.TestCase):
             'log': str(self.npx_log), 'env_log': str(self.tmp / 'env.json'),
             'stderr': extra.get('FAKE_NPX_STDERR'), 'json': extra.get('FAKE_NPX_JSON'),
             'fail': extra.get('FAKE_NPX_FAIL'), 'node_version': extra.get('FAKE_NODE_VERSION'),
-            'sleep': extra.get('FAKE_NPX_SLEEP'),
+            'sleep': extra.get('FAKE_NPX_SLEEP'), 'companion': extra.get('FAKE_NPX_COMPANION'),
         }), encoding='utf-8')
         env = {k: v for k, v in os.environ.items() if not k.startswith("OIL_")}
         env.update(HOME=str(self.tmp / "home"), APPDATA=str(self.tmp / "config"), LOCALAPPDATA=str(self.tmp / "state"),
@@ -130,6 +143,62 @@ class CheckUpdateTest(unittest.TestCase):
     def npx_calls(self):
         return self.npx_log.read_text(encoding="utf-8").splitlines() if self.npx_log.exists() else []
 
+    def test_missing_companion_is_offered_then_installed_on_request(self):
+        self.login()
+        self.set_current("99.0.0")
+        self.set_latest("99.0.0", free=False, included=["oil-art-landing"])
+        out = self.run_check(update=False)
+        self.assertIn("Oil UI Pro 附赠的 oil-art-landing 还没有安装。", out)
+        self.assertIn("--update", out)
+        self.assertEqual(self.npx_calls(), [])
+        self.assertEqual(self.run_check(update=False), "")
+        self.assertEqual(Versions.hits, 1)
+
+        out = self.run_check(FAKE_NPX_COMPANION="oil-art-landing")
+        self.assertIn("已安装 Oil UI Pro 附赠的 oil-art-landing", out)
+        self.assertIn("新开一个会话后即可使用", out)
+        self.assertIn(f"update oil-ui-pro --path {self.skill}", self.npx_calls()[0])
+        self.assertTrue((self.tmp / "skills" / "oil-art-landing" / "SKILL.md").exists())
+        self.assertEqual(self.run_check(update=False), "")
+        self.assertEqual(self.run_check(), "")
+        self.assertEqual(len(self.npx_calls()), 1)
+
+    def test_skill_update_mentions_and_installs_missing_companion(self):
+        self.login()
+        self.set_latest("99.0.0", free=False, included=["oil-art-landing"])
+        self.assertIn("更新时会一并安装附赠的 oil-art-landing", self.run_check(update=False))
+        out = self.run_check(FAKE_NPX_COMPANION="oil-art-landing")
+        self.assertIn("Oil UI Pro 已自动更新到 99.0.0（原来是 0.10.0），并安装了附赠的 oil-art-landing（新开会话后可用）。", out)
+
+    def test_companion_install_needs_login_and_backs_off_after_failure(self):
+        self.set_current("99.0.0")
+        self.set_latest("99.0.0", free=False, included=["oil-art-landing"])
+        out = self.run_check()
+        self.assertIn("附赠的 oil-art-landing 还没有安装。授权已失效或尚未授权", out)
+        self.assertEqual(self.npx_calls(), [])
+
+        self.login()
+        out = self.run_check()
+        self.assertIn("这次没能装好，稍后会再试", out)
+        self.assertEqual(len(self.npx_calls()), 1)
+        # 同一天不再重复尝试，也不重复提示
+        self.assertEqual(self.run_check(), "")
+        self.assertEqual(len(self.npx_calls()), 1)
+
+    def test_companion_names_from_server_are_validated(self):
+        self.login()
+        self.set_current("99.0.0")
+        self.set_latest("99.0.0", free=False, included=["../escape", "oil-ui-pro", "unpublished", "/abs"], published=["../escape", "/abs"])
+        self.assertEqual(self.run_check(update=False), "")
+        self.assertEqual(self.run_check(), "")
+        self.assertEqual(self.npx_calls(), [])
+
+    def test_free_skill_ignores_companions(self):
+        self.set_current("99.0.0")
+        self.set_latest("99.0.0", free=True, included=["oil-art-landing"])
+        self.assertEqual(self.run_check(), "")
+        self.assertEqual(self.npx_calls(), [])
+
     def test_logged_in_paid_skill_updates_itself(self):
         self.login()
         out = self.run_check()
@@ -158,7 +227,7 @@ class CheckUpdateTest(unittest.TestCase):
             AWS_SECRET_ACCESS_KEY='dummy-only-aws', OPENAI_API_KEY='dummy-only-openai',
             NODE_OPTIONS='--require /nonexistent-oil-test.js', NPM_TOKEN='dummy-only-npm',
             OIL_TOKEN='dummy-only-oil'))
-        self.assertIn('-y github:oil-oil/oil-cli#3a9f2b417d0f3dfe5a143dbd4c96017e7f7e8ded update', self.npx_calls()[0])
+        self.assertIn('-y github:oil-oil/oil-cli#df0155b7e40960369f7a191a9e0faac2667d71bb update', self.npx_calls()[0])
         seen = json.loads((self.tmp / 'env.json').read_text(encoding="utf-8"))
         for key in ('AWS_SECRET_ACCESS_KEY','OPENAI_API_KEY','NODE_OPTIONS','NPM_TOKEN'):
             self.assertFalse(seen[key], key)
@@ -426,20 +495,14 @@ class CheckUpdateTest(unittest.TestCase):
         mod = importlib.util.module_from_spec(spec)
         assert spec and spec.loader
         spec.loader.exec_module(mod)
-        prev_lang = os.environ.get("LANG")
-        try:
-            os.environ["LANG"] = "zh_CN.UTF-8"
+        # LC_ALL / LC_MESSAGES 优先于 LANG，必须一起固定，否则结果取决于运行测试的终端语言。
+        with mock.patch.dict(os.environ, {"LANG": "zh_CN.UTF-8", "LC_ALL": "", "LC_MESSAGES": ""}):
             zh_nt = mod.notice("oil-ui-pro", "0.10.0", "99.0.0", "", "download_timeout", platform_name="nt")
             self.assertIn("请设置环境变量 OIL_UPDATE_TIMEOUT=900 与 OIL_DOWNLOAD_TIMEOUT=600", zh_nt)
             self.assertNotIn("OIL_DOWNLOAD_TIMEOUT=600 \"", zh_nt)
-            os.environ["LANG"] = "en_US.UTF-8"
+        with mock.patch.dict(os.environ, {"LANG": "en_US.UTF-8", "LC_ALL": "", "LC_MESSAGES": ""}):
             en_nt = mod.notice("oil-ui-pro", "0.10.0", "99.0.0", "", "download_timeout", platform_name="nt")
             self.assertIn("Set OIL_UPDATE_TIMEOUT=900 and OIL_DOWNLOAD_TIMEOUT=600, then run", en_nt)
-        finally:
-            if prev_lang is None:
-                os.environ.pop("LANG", None)
-            else:
-                os.environ["LANG"] = prev_lang
 
 
 if __name__ == "__main__":

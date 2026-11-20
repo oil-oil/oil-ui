@@ -241,7 +241,7 @@ class OiloilImageTests(unittest.TestCase):
                 "print(json.dumps(module.fetch('oil-ui-pro')))")
         result = subprocess.run([__import__('sys').executable, '-c', code], cwd=self.cwd, env=self.env,
                                 capture_output=True, text=True, encoding='utf-8', timeout=15, check=True)
-        self.assertEqual(json.loads(result.stdout), {'latest': '99.0.0', 'free': False})
+        self.assertEqual(json.loads(result.stdout), {'latest': '99.0.0', 'free': False, 'companions': []})
         self.assertEqual(self.requests[-1]['path'], '/gallery/api/store/versions')
         self.call('balance')
         self.assertEqual(self.requests[-1]['path'], '/v1/credits')
@@ -479,9 +479,11 @@ class OiloilImageTests(unittest.TestCase):
         self.assertEqual(self.request_files(), [])
 
         self.status = 429
+        self.raw = json.dumps({'error': {'message': '今日生图请求次数已达上限（100 次/24h）'}})
         result = self.call('image', '<说明>')
         self.assertEqual(result.returncode, 7, result.stderr)
         self.assertIn('HTTP 429', result.stderr)
+        self.assertIn('今日生图请求次数已达上限', result.stderr)
         self.assertNotIn('不要重新生图', result.stderr)
         self.assertEqual(self.recovery_files(), [])
         self.assertEqual(self.request_files(), [])
