@@ -1,8 +1,8 @@
 English · [中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](https://ui.oiloil.org/ko/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=lang-bar) · [Deutsch](https://ui.oiloil.org/de/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=lang-bar) · [Español](https://ui.oiloil.org/es/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=lang-bar)
 
-[![GitHub Stars](https://img.shields.io/github/stars/oil-oil/oil-ui?style=flat-square&color=292e2b)](https://github.com/oil-oil/oil-ui/stargazers) [![skills.sh](https://img.shields.io/badge/skills.sh-4.6K%2B_installs-4a5d4e?style=flat-square)](https://www.skills.sh/oil-oil/oil-ui/oil-ui) [![Live Gallery](https://img.shields.io/badge/live_gallery-117_examples-3d5a45?style=flat-square)](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=hero-gallery) [![Blind Benchmark](https://img.shields.io/badge/blind_test-87.0%2F100_(15_runs)-5b533b?style=flat-square)](https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-benchmark) [![License: MIT](https://img.shields.io/badge/license-MIT-60675f?style=flat-square)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/oil-oil/oil-ui?style=flat-square&color=292e2b)](https://github.com/oil-oil/oil-ui/stargazers) [![skills.sh](https://img.shields.io/badge/skills.sh-4.6K%2B_installs-4a5d4e?style=flat-square)](https://www.skills.sh/oil-oil/oil-ui/oil-ui) [![Live Gallery](https://img.shields.io/badge/live_gallery-143_examples-3d5a45?style=flat-square)](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=hero-gallery) [![Blind Benchmark](https://img.shields.io/badge/blind_test-87.0%2F100_(15_runs)-5b533b?style=flat-square)](https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-benchmark) [![License: MIT](https://img.shields.io/badge/license-MIT-60675f?style=flat-square)](LICENSE)
 
-**Oil UI** is an interface & UI/UX design skill for AI coding agents. It recommends one clear visual direction and refines it against real-browser screenshots, or explores 3 genuinely distinct directions side by side when you ask to compare. Browse 117 live websites, apps, dashboards, and components at [ui.oiloil.org](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=intro-text).
+**Oil UI** is an interface & UI/UX design skill for AI coding agents. It recommends one clear visual direction and refines it against real-browser screenshots, or explores 3 genuinely distinct directions side by side when you ask to compare. Browse 143 live websites, apps, dashboards, and components at [ui.oiloil.org](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=intro-text).
 
 ```bash
 npx skills add oil-oil/oil-ui
@@ -21,6 +21,14 @@ npx skills add oil-oil/oil-ui
 
 <p align="center">
   <a href="https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=showcase-banner"><img src="./assets/readme/showcase.en.webp" width="100%" alt="Gallery highlights: an English learning app, a music year in review, hardware and component library websites, a project management tool, a ride-hailing app, a voice assistant, a checkout flow, and a film camera"></a>
+</p>
+
+### Art-Directed Landing Pages (Included Free with Oil UI Pro: `oil-art-landing`)
+
+Beyond dashboards and product UI, **Oil UI Pro** includes the companion skill **`oil-art-landing`** at no extra cost: a **rich library of desktop & mobile app visual anchors** (infrared film, polar glacier, X-ray darkroom, sunlit conservatory, wet forest moss, fluted glass, cotton letterpress, terracotta dunes, optical ice, indigo shibori, and more) plus an open derivation grammar—compare 3 directions first, adapt or derive to fit your product, and ship live animated pages with real foreground occlusion. [Explore 20 interactive live examples →](https://ui.oiloil.org/en/art-landing/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=art-landing-banner)
+
+<p align="center">
+  <a href="https://ui.oiloil.org/en/art-landing/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=art-landing-banner"><img src="./assets/readme/art-landing.webp" width="100%" alt="Oil Art Landing highlights: Kova, Aperture, Cairn, Helixa, Riso, and Aquarelle desktop landing pages paired with Duna, Kryo, and Aizome mobile app visual worlds"></a>
 </p>
 
 ## Installation
@@ -111,8 +119,9 @@ The open-source version takes a new page from a blank start to a distinctive des
 | 19 card prototypes with code and spatial expansion containers | | ✓ |
 | Effects such as light trails, dot patterns, and flowing gradients | | ✓ |
 | Scene layouts, visuals, and state checks for mini-games | | ✓ |
+| Included free companion `oil-art-landing`: rich desktop & mobile art landing anchors + product-tailored derivation, with foreground-occlusion handoff | | ✓ |
 
-Oil UI Pro costs $14.99: a one-time purchase with lifetime updates (+ 100 image generation credits). Get it at [ui.oiloil.org/pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=comparison-table-pro), or run `npx github:oil-oil/oil-cli install oil-ui-pro` to let your agent guide sign-in, payment, and installation.
+Oil UI Pro costs $19.99: a one-time purchase with lifetime updates (+ 100 image generation credits and `oil-art-landing` included free). Get it at [ui.oiloil.org/pro](https://ui.oiloil.org/en/pro/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=comparison-table-pro), or run `npx github:oil-oil/oil-cli install oil-ui-pro` to let your agent guide sign-in, payment, and installation.
 
 ## Version checks
 

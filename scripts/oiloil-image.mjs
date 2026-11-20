@@ -199,6 +199,13 @@ async function prepareOutput(out, idempotencyKey) {
   }
 }
 
+function errorDetail(raw) {
+  try {
+    const message = JSON.parse(raw)?.error?.message;
+    return typeof message === 'string' ? message.replace(/\s+/g, ' ').trim().slice(0, 300) : '';
+  } catch { return ''; }
+}
+
 async function request(command, opts, token, root, recovery) {
   let response, raw;
   const endpoint = command === 'image' ? 'images' : command === 'balance' ? 'credits' : `requests/${opts.key}?endpoint=images`;
@@ -228,16 +235,18 @@ async function request(command, opts, token, root, recovery) {
     throw new CliError(7, '未找到这个 image 请求。请核对幂等键；不要重新生图，必要时到账户页核对记录。');
   }
   if (response.status === 400) {
-    let detail = '';
-    try {
-      const result = JSON.parse(raw);
-      if (typeof result?.error?.message === 'string') detail = result.error.message.replace(/\s+/g, ' ').trim().slice(0, 300);
-    } catch {}
+    const detail = errorDetail(raw);
     throw new CliError(2, `oiloil 参数错误${detail ? `：${detail}` : '（HTTP 400）'}。请修正后重试。`);
   }
   if (response.status === 409 && command === 'image') {
     recovery.statusRequired = true;
     throw new CliError(7, 'oiloil 检测到重复的幂等键。请用随后给出的 status 命令查询原请求，不要直接重新生成。');
+  }
+  if (response.status === 429) {
+    const detail = errorDetail(raw);
+    const retryAfter = response.headers.get('retry-after')?.trim();
+    const retryHint = retryAfter && /^\d+$/.test(retryAfter) ? `（建议 ${retryAfter}s 后重试）` : '';
+    throw new CliError(7, `oiloil 请求频率或额度受限（HTTP 429）${detail ? `：${detail}` : ''}${retryHint}，未收到图片且未扣费。请稍后重试。`);
   }
   if (response.status >= 400 && response.status < 500) {
     throw new CliError(7, `oiloil 拒绝了请求（HTTP ${response.status}），未收到图片。请检查请求后重试。`);

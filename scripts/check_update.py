@@ -27,7 +27,7 @@ from typing import NamedTuple
 ROOT = Path(__file__).resolve().parent.parent
 API = os.environ.get("OIL_API", "https://ui.oiloil.org").rstrip("/")
 # 固定经过检查的 CLI：无 npm 依赖，下载包必须通过 SHA-256 与归档路径校验。
-CLI = "github:oil-oil/oil-cli#3a9f2b417d0f3dfe5a143dbd4c96017e7f7e8ded"
+CLI = "github:oil-oil/oil-cli#df0155b7e40960369f7a191a9e0faac2667d71bb"
 UPDATE_ENV_KEYS = {
     "PATH", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_STATE_HOME",
     "SYSTEMROOT", "WINDIR", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "LC_MESSAGES",
@@ -57,8 +57,11 @@ def resolve_update_timeout() -> float:
     return seconds
 
 
-def read_skill() -> tuple[str, str] | None:
-    text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+SKILL_NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
+
+
+def read_skill(root: Path = ROOT) -> tuple[str, str] | None:
+    text = (root / "SKILL.md").read_text(encoding="utf-8")
     name = re.search(r"^name:\s*\"?([\w-]+)\"?\s*$", text, re.MULTILINE)
     version = re.search(r"^\s+version:\s*\"?(\d+\.\d+\.\d+)\"?\s*$", text, re.MULTILINE)
     if not name or not version:
@@ -124,11 +127,31 @@ def parse(version: str) -> tuple[int, ...]:
 def fetch(name: str) -> dict | None:
     request = urllib.request.Request(f"{API}/api/store/versions", headers={"User-Agent": "oil-skill-update-check"})
     with urllib.request.urlopen(request, timeout=FETCH_TIMEOUT) as response:
-        entry = json.load(response).get("skills", {}).get(name)
+        skills = json.load(response).get("skills", {})
+    entry = skills.get(name)
     if not isinstance(entry, dict) or not re.fullmatch(r"\d+\.\d+\.\d+", str(entry.get("latest", ""))):
         return None
-    # 免费版的版本信息带公开下载地址，付费版没有
-    return {"latest": entry["latest"], "free": bool(entry.get("download_url"))}
+    # 免费版的版本信息带公开下载地址，付费版没有。付费版的 included 列出已发布的附赠配套 Skill。
+    free = bool(entry.get("download_url"))
+    included = entry.get("included") if not free and isinstance(entry.get("included"), list) else []
+    companions = [skill for skill in included
+                  if isinstance(skill, str) and SKILL_NAME.fullmatch(skill) and skill != name and isinstance(skills.get(skill), dict)]
+    return {"latest": entry["latest"], "free": free, "companions": companions}
+
+
+def missing_companions(names: object) -> list[str]:
+    """配套 Skill 装在本 Skill 的同级目录；目录缺失或 SKILL.md 不是它时视为未安装。"""
+    missing = []
+    for skill in names if isinstance(names, list) else []:
+        if not (isinstance(skill, str) and SKILL_NAME.fullmatch(skill)):
+            continue
+        try:
+            found = read_skill(ROOT.parent / skill)
+        except OSError:
+            found = None
+        if not found or found[0] != skill:
+            missing.append(skill)
+    return missing
 
 
 def file_signature(path: str | Path | None) -> list:
@@ -186,6 +209,14 @@ def cli_error(stdout: str, stderr: str) -> str:
 
 
 def auto_update(name: str, latest: str, free: bool, npx: str | None, ready: bool, approved: bool = False) -> UpdateResult:
+    def updated() -> bool:
+        skill = read_skill()
+        return bool(skill and parse(skill[1]) >= parse(latest))
+    return run_update(name, free, npx, ready, approved, updated)
+
+
+def run_update(name: str, free: bool, npx: str | None, ready: bool, approved: bool, done) -> UpdateResult:
+    """用固定提交的 CLI 原地更新本目录；CLI 同时补装同级缺失的配套 Skill。done() 判断这次要的结果是否到位。"""
     if not approved or os.environ.get("OIL_NO_AUTO_UPDATE"):
         return UpdateResult(False, "manual")
     if not (free or logged_in()):
@@ -212,8 +243,7 @@ def auto_update(name: str, latest: str, free: bool, npx: str | None, ready: bool
         return UpdateResult(True, "network")
     if re.search(r"node[^\n]*(?:not found|No such file)|EBADENGINE", result.stderr, re.I):
         return UpdateResult(False, "dependencies")
-    skill = read_skill()
-    if result.returncode == 0 and skill and parse(skill[1]) >= parse(latest):
+    if result.returncode == 0 and done():
         return UpdateResult(True, "updated")
     return UpdateResult(True, "failed")
 
@@ -272,6 +302,88 @@ def notice(name: str, current: str, latest: str, detail: str, reason: str, platf
     return intro + f"在终端运行 {command} 即可更新。"
 
 
+def skill_list(names: list[str]) -> str:
+    return ", ".join(names) if english() else "、".join(names)
+
+
+def companion_detail(names: list[str]) -> str:
+    if not names:
+        return ""
+    return f"; updating also installs the included {skill_list(names)}" if english() else f"，更新时会一并安装附赠的 {skill_list(names)}"
+
+
+def companion_notice(name: str, names: list[str], reason: str, platform_name: str = os.name) -> str:
+    command = update_command(name, platform_name)
+    label, listed = product_name(name), skill_list(names)
+    if english():
+        intro = f"Included with {label} but not installed yet: {listed}. "
+        if reason == "unauthorized":
+            return intro + f"Authorization has expired or is missing. Run npx {CLI} login, then run {command}."
+        if reason == "dependencies":
+            return intro + f"Installing it needs Node.js 18 or later. Install it, then run {command}."
+        if reason == "download_timeout":
+            return intro + f"The download timed out. Set OIL_UPDATE_TIMEOUT=900 and OIL_DOWNLOAD_TIMEOUT=600, then run {command}."
+        if reason == "manual":
+            return intro + f"To install it, run {command}."
+        return intro + f"Automatic installation did not finish and will be retried later. To try again now, run {command}."
+    intro = f"{zh_label(label)}附赠的 {listed} 还没有安装。"
+    if reason == "unauthorized":
+        return intro + f"授权已失效或尚未授权。运行 npx {CLI} login 重新授权，再运行 {command}。"
+    if reason == "dependencies":
+        return intro + f"安装需要 Node.js 18 以上。安装后运行 {command}。"
+    if reason == "download_timeout":
+        return intro + f"下载超时，请设置环境变量 OIL_UPDATE_TIMEOUT=900 与 OIL_DOWNLOAD_TIMEOUT=600 后运行 {command}。"
+    if reason == "manual":
+        return intro + f"在终端运行 {command} 即可安装。"
+    return intro + f"这次没能装好，稍后会再试；想立即重试可运行 {command}。"
+
+
+def companions_installed(name: str, names: list[str]) -> str:
+    label, listed = product_name(name), skill_list(names)
+    if english():
+        return f"Installed {listed}, included with {label}, in {ROOT.parent}. Start a new session to use it."
+    return f"已安装 {zh_label(label)}附赠的 {listed}（{ROOT.parent}）。新开一个会话后即可使用。"
+
+
+def companion_check(name: str, cache: dict, state: dict, install_path: Path, approved: bool, now: float) -> int:
+    """本 Skill 已是最新、但附赠的配套 Skill 缺失时：提示安装；用户同意（--update）后用同一个 CLI 补装。"""
+    missing = missing_companions(cache.get("companions"))
+    if not missing:
+        if any(key.startswith("companion_") for key in state):
+            save(install_path, {key: value for key, value in state.items() if not key.startswith("companion_")})
+        return 0
+    context, npx, ready = update_context(approved)
+    target = ",".join(missing)
+    reason = state.get("companion_failed_reason", "failed")
+    cooldown = RETRY_AFTER_FAILURE if reason in {"network", "download_timeout"} else DAY
+    if (state.get("companion_failed_for") != target or state.get("companion_failed_context") != context
+            or now - float(state.get("companion_failed_at", 0)) >= cooldown):
+        result = run_update(name, bool(cache.get("free")), npx, ready, approved, lambda: not missing_companions(missing))
+        reason = result.reason
+        if reason == "updated":
+            save(install_path, {key: value for key, value in state.items() if not key.startswith("companion_")})
+            print(companions_installed(name, missing))
+            return 0
+        for key in [key for key in state if key.startswith("companion_failed_")]:
+            state.pop(key)
+        if result.attempted:
+            state.update(companion_failed_for=target, companion_failed_at=now,
+                         companion_failed_reason=reason, companion_failed_context=context)
+        save(install_path, state)
+    if reason == "network":
+        return 0
+    language = "en" if english() else "zh"
+    if (state.get("companion_notified_for") == target and state.get("companion_notified_reason") == reason
+            and state.get("companion_notified_context") == context and state.get("companion_notified_language") == language
+            and now - float(state.get("companion_notified_at", 0)) < DAY):
+        return 0
+    state.update(companion_notified_for=target, companion_notified_at=now, companion_notified_reason=reason,
+                 companion_notified_context=context, companion_notified_language=language)
+    save(install_path, state)
+    print(companion_notice(name, missing, reason))
+    return 0
+
+
 def utf8_output() -> None:
     """管道另一头的 Agent 按 UTF-8 读；控制台的代码页可能连中文都没有。"""
     for stream in (sys.stdout, sys.stderr):
@@ -294,7 +406,7 @@ def main() -> int:
     # 原来的共享文件可能包含失败与提示记录，迁移时只保留公开缓存。
     previous_cache = load(path)
     cache = {key: value for key, value in previous_cache.items()
-             if key in {"checked_at", "latest", "free", "fetch_failed_at"}}
+             if key in {"checked_at", "latest", "free", "companions", "fetch_failed_at"}}
     if cache != previous_cache:
         save(path, cache)
     install_path = installation_state_path(name)
@@ -319,9 +431,12 @@ def main() -> int:
             return 0
 
     latest = cache.get("latest")
-    if not isinstance(latest, str) or not re.fullmatch(r"\d+\.\d+\.\d+", latest) or parse(latest) <= parse(current):
+    if not isinstance(latest, str) or not re.fullmatch(r"\d+\.\d+\.\d+", latest):
         return 0
-    detail = ""
+    if parse(latest) <= parse(current):
+        return companion_check(name, cache, state, install_path, approved, now)
+    missing = missing_companions(cache.get("companions"))
+    detail = companion_detail(missing)
     context, npx, ready = update_context(approved)
 
     reason = state.get("auto_failed_reason", "failed")
@@ -333,10 +448,13 @@ def main() -> int:
         if reason == "updated":
             save(install_path, {})
             label = product_name(name)
+            added = [skill for skill in missing if skill not in missing_companions(missing)]
             if english():
-                print(f"{label} updated automatically to {latest} (previous: {current}){detail}. Read SKILL.md again before continuing.")
+                extra = f", and installed the included {skill_list(added)} (start a new session to use it)" if added else ""
+                print(f"{label} updated automatically to {latest} (previous: {current}){extra}. Read SKILL.md again before continuing.")
             else:
-                print(f"{zh_label(label)}已自动更新到 {latest}（原来是 {current}）{detail}。请重新读取 SKILL.md 再继续。")
+                extra = f"，并安装了附赠的 {skill_list(added)}（新开会话后可用）" if added else ""
+                print(f"{zh_label(label)}已自动更新到 {latest}（原来是 {current}）{extra}。请重新读取 SKILL.md 再继续。")
             return 0
         if result.attempted:
             state.update(auto_failed_version=latest, auto_failed_at=now,
