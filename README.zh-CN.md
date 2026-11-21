@@ -10,11 +10,6 @@ npx skills add oil-oil/oil-ui
 
 **兼容宿主：** Claude Code, Cursor, Codex, Windsurf, Cline, Antigravity, OpenCode, GitHub Copilot, Roo Code, DeepSeek Harness（[dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui)）, Kimi Code, Trae 及任意支持 `SKILL.md` 的 Agent。
 
-| 不装 Skill 默认输出（同模型同题目 · 83/100，5/6 通过） | 使用 Oil UI（同模型同题目 · 88/100，6/6 全过） |
-| :---: | :---: |
-| <a href="https://ui.oiloil.org/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=hero-compare"><img src="https://ui.oiloil.org/comparisons/ui-design-skills-tested/shots/no-skill-run-1-desktop-initial.png" width="100%" alt="不装 Skill 的默认输出：大号口号把工具目录挤到下方，小号淡色元信息偏多，精确提示校验未通过"></a> | <a href="https://ui.oiloil.org/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=hero-compare"><img src="https://ui.oiloil.org/comparisons/ui-design-skills-tested/shots/oil-ui-run-1-desktop-initial.png" width="100%" alt="装上 Oil UI 后的同题输出：首屏直接进入搜索与分类筛选，卡片主次清楚，6 项功能验收全部通过"></a> |
-| 开场大口号把高频工具检索挤到下方，淡色小字偏多、手机长弹窗按钮落出首屏（[看 15 次公开盲测 →](https://ui.oiloil.org/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=hero-compare)）。 | 首屏直接把搜索与分类筛选交给用户，编辑感目录层级清晰，3 次独立运行功能验收全部 6/6 通过（盲评均分 `87.0`）。 |
-
 <p align="center">
   <img src="./assets/readme/hero.webp" width="100%" alt="oil-ui：把 AI 的 UI 设计能力推到极限。插画里的人把黄色图钉按在三张风格不同的小样中间那张上">
 </p>

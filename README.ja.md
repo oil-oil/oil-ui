@@ -10,11 +10,6 @@ npx skills add oil-oil/oil-ui
 
 **対応エージェント：** Claude Code, Cursor, Codex, Windsurf, Cline, Antigravity, OpenCode, GitHub Copilot, Roo Code, DeepSeek Harness（[dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui)）, Kimi Code, Trae ほか `SKILL.md` 対応エージェント。
 
-| Skill なし（同一モデル・同一課題 · 83/100、5/6 合格） | Oil UI 使用（同一モデル・同一課題 · 88/100、6/6 全合格） |
-| :---: | :---: |
-| <a href="https://ui.oiloil.org/ja/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=hero-compare"><img src="https://ui.oiloil.org/comparisons/ui-design-skills-tested/shots/no-skill-run-1-desktop-initial.png" width="100%" alt="Skill なしのデフォルト出力：大きな見出しで検索欄が押し下げられ、薄い小さな補助文字が多い"></a> | <a href="https://ui.oiloil.org/ja/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=hero-compare"><img src="https://ui.oiloil.org/comparisons/ui-design-skills-tested/shots/oil-ui-run-1-desktop-initial.png" width="100%" alt="Oil UI 使用時の出力：ファーストビューで検索と絞り込みが使え、カードの階層が明確で全 6 シナリオ合格"></a> |
-| 大きなスローガンがツール検索を押し下げ、薄い小文字やモバイルダイアログの見切れが発生（[15 回のブラインド実測 →](https://ui.oiloil.org/ja/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-ja&utm_content=hero-compare)）。 | ファーストビューから検索・カテゴリ絞り込みを配置し、3 回すべての独立実行で機能検証 6/6 に合格（平均 `87.0` 点）。 |
-
 <p align="center">
   <img src="./assets/readme/hero.en.webp" width="100%" alt="oil-ui：AI による UI デザインを限界まで引き上げます。異なるスタイルの 3 つのプレビューのうち、真ん中のものに黄色い画鋲を刺している人">
 </p>

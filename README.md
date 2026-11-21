@@ -10,11 +10,6 @@ npx skills add oil-oil/oil-ui
 
 **Compatible with:** Claude Code, Cursor, Codex, Windsurf, Cline, Antigravity, OpenCode, GitHub Copilot, Roo Code, DeepSeek Harness ([dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui)), Kimi Code, Trae, and any `SKILL.md`-compatible agent.
 
-| Without Skill (Same Model & Brief · 83/100, 5/6 checks) | With Oil UI (Same Model & Brief · 88/100, 6/6 checks) |
-| :---: | :---: |
-| <a href="https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=hero-compare"><img src="https://ui.oiloil.org/comparisons/ui-design-skills-tested/shots/no-skill-run-1-desktop-initial.png" width="100%" alt="Default agent output without Skill on CommonShelf brief: big opening banner pushes tool filtering down, faint metadata, failed toast check"></a> | <a href="https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=hero-compare"><img src="https://ui.oiloil.org/comparisons/ui-design-skills-tested/shots/oil-ui-run-1-desktop-initial.png" width="100%" alt="With Oil UI on the same CommonShelf brief: search and category filter immediately on screen one, warm editorial hierarchy, all 6 functional scenarios passed"></a> |
-| Opening slogan pushes the working tool directory down; small faint labels and mobile error-dialog clipping ([15-run blind test →](https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=hero-compare)). | Working search and category filter start immediately above the fold; clear card hierarchy, 3/3 runs passed all 6 functional checks (`87.0` avg). |
-
 <p align="center">
   <img src="./assets/readme/hero.en.webp" width="100%" alt="oil-ui: push AI UI design to its limits. A person pins a yellow pushpin to the middle of three previews in different styles">
 </p>
