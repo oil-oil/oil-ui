@@ -42,6 +42,7 @@ class OiloilImageTests(unittest.TestCase):
                         'size': '1K', 'usage': {'credits': 7, 'balance': 93}}
         self.request_status = {'request_id': 'req-test', 'state': 'completed', 'credits': 7, 'run_id': None}
         self.raw = None
+        self.response_headers = {}
         self.disconnect = self.hang = self.redirect = False
         self.before_response = None
         self.release = threading.Event()
@@ -69,6 +70,8 @@ class OiloilImageTests(unittest.TestCase):
                 if owner.redirect:
                     self.send_header('Location', owner.base + '/redirected')
                 self.send_header('Content-Type', 'application/json')
+                for header_name, header_value in owner.response_headers.items():
+                    self.send_header(header_name, header_value)
                 self.send_header('Content-Length', len(data))
                 self.end_headers()
                 try:
@@ -132,7 +135,8 @@ class OiloilImageTests(unittest.TestCase):
             result = self.call(*args)
             self.assertEqual(result.returncode, 0)
             for text in ('image', 'balance', 'status', '幂等键', '16 的倍数', '--ref', '2 MiB', '--名字=值',
-                         'OIL_TOKEN', 'OIL_API', 'OIL_IMAGE_API', 'XDG_CONFIG_HOME', 'APPDATA', LOGIN, ACCOUNT, 'medium', '退出码'):
+                         '250000', 'OIL_TOKEN', 'OIL_API', 'OIL_IMAGE_API', 'XDG_CONFIG_HOME', 'APPDATA',
+                         LOGIN, ACCOUNT, 'medium', '退出码'):
                 self.assertIn(text, result.stdout)
             for text in ('单价', '费率', '加价', 'quality <', '--quality'):
                 self.assertNotIn(text, result.stdout)
@@ -470,10 +474,10 @@ class OiloilImageTests(unittest.TestCase):
 
     def test_definite_http_failures_do_not_create_paid_response_recovery(self):
         self.status = 400
-        self.raw = json.dumps({'error': {'message': 'size 超出上游支持范围'}})
+        self.raw = json.dumps({'error': {'message': 'size 超出支持范围'}})
         result = self.call('image', '<说明>')
         self.assertEqual(result.returncode, 2, result.stderr)
-        self.assertIn('size 超出上游支持范围', result.stderr)
+        self.assertIn('size 超出支持范围', result.stderr)
         self.assertNotIn('不要重新生图', result.stderr)
         self.assertEqual(self.recovery_files(), [])
         self.assertEqual(self.request_files(), [])
@@ -580,15 +584,194 @@ fs.open = async (file, ...args) => {
         self.assertEqual(backups[0].read_text(encoding='utf-8'), self.raw)
         self.assertIn(json.dumps(str(backups[0]), ensure_ascii=False), result.stderr)
 
-    def test_server_error_is_not_retried_and_received_data_is_retained(self):
-        self.status = 503
-        self.raw = '<provider detail>'
+    def test_default_timeouts_match_server_budget(self):
+        timeouts = self.evaluate("""console.log(JSON.stringify({
+          image: cli.parseArgs(['image', '<说明>']).opts.timeout,
+          balance: cli.parseArgs(['balance']).opts.timeout,
+          status: cli.parseArgs(['status', '00000000-0000-4000-8000-000000000000']).opts.timeout
+        }));""")
+        self.assertEqual(timeouts, {'image': 250000, 'balance': 10000, 'status': 10000})
+
+    def test_structured_5xx_known_codes_clean_up_and_never_leak_upstream(self):
+        cases = [
+            (504, 'timeout', 'oiloil 生成超时（HTTP 504），本次未收到图片且未扣费。请稍后重试。'),
+            (502, 'upstream_error', 'oiloil 服务暂时繁忙或不可用（HTTP 502），本次未收到图片且未扣费。请稍后重试。'),
+        ]
+        for status, code, expected in cases:
+            with self.subTest(status=status, code=code):
+                before = len(self.requests)
+                self.status = status
+                self.raw = json.dumps({
+                    'request_id': 'req_0123abcd',
+                    'error': {'code': code, 'message': '<upstream secret> yir zenmux openai aigocode provider'},
+                })
+                result = self.call('image', '<说明>')
+                self.assertEqual(result.returncode, 7)
+                self.assertEqual(result.stdout, '')
+                self.assertEqual(result.stderr.strip(), expected)
+                for forbidden in ('请先恢复已返回的结果', '生成响应保留', 'status', 'upstream secret', 'yir', 'zenmux', 'openai', 'aigocode', 'provider'):
+                    self.assertNotIn(forbidden, result.stderr)
+                self.assertEqual(self.recovery_files(), [])
+                self.assertEqual(self.request_files(), [])
+                self.assertEqual(len(self.requests) - before, 1)
+
+    def test_unstructured_or_unknown_5xx_keeps_status_key_without_response_file_or_leak(self):
+        cases = [
+            (503, json.dumps({'request_id': 'req_0123abcd', 'error': {'code': 'unavailable', 'message': '<provider detail> aigocode'}})),
+            (500, json.dumps({'request_id': 'req_0123abcd', 'error': {'code': 'timeout', 'message': '<provider detail>'}})),
+            (503, '<provider detail> yir zenmux openai'),
+            (504, '<html><body>504 Gateway Time-out <provider detail></body></html>'),
+            (504, json.dumps({'error': {'code': 'timeout', 'message': '<provider detail>'}})),
+            (504, json.dumps({'request_id': 'bad-id', 'error': {'code': 'timeout', 'message': '<provider detail>'}})),
+            (500, json.dumps({'request_id': 'req_0123abcd', 'error': {'code': 'internal_error', 'message': '<provider detail>'}})),
+        ]
+        for status, raw in cases:
+            with self.subTest(status=status, raw=raw[:40]):
+                before_requests = len(self.requests)
+                before_files = set(self.request_files())
+                self.status = status
+                self.raw = raw
+                result = self.call('image', '<说明>')
+                self.assertEqual(result.returncode, 7)
+                self.assertEqual(result.stdout, '')
+                self.assertEqual(len(self.requests) - before_requests, 1)
+                key = self.requests[-1]['headers']['Idempotency-Key']
+                self.assertIn(f'HTTP {status}', result.stderr)
+                self.assertIn('暂时无法确认本次是否扣费', result.stderr)
+                self.assertIn(ACCOUNT, result.stderr)
+                self.assertIn(f'status {key}', result.stderr)
+                for forbidden in ('provider detail', 'yir', 'zenmux', 'openai', 'aigocode', '请先恢复已返回的结果', '生成响应保留'):
+                    self.assertNotIn(forbidden, result.stderr)
+                self.assertEqual(self.recovery_files(), [])
+                new_request_files = set(self.request_files()) - before_files
+                self.assertEqual(len(new_request_files), 1)
+                metadata = json.loads(new_request_files.pop().read_text(encoding='utf-8'))
+                self.assertEqual(metadata, {'endpoint': 'images', 'idempotency_key': key})
+
+    def test_400_and_429_map_known_codes_and_redact_provider_text(self):
+        self.status = 429
+        self.response_headers = {'Retry-After': '30'}
+        self.raw = json.dumps({
+            'request_id': 'req_abcdef12',
+            'error': {'code': 'rate_limit_exceeded', 'message': 'yir zenmux openai 429'},
+        })
         result = self.call('image', '<说明>')
         self.assertEqual(result.returncode, 7)
-        self.assertIn('HTTP 503', result.stderr)
-        self.assertNotIn('provider detail', result.stderr)
-        self.assertEqual(self.recovery_files()[0].read_text(encoding='utf-8'), self.raw)
-        self.assertEqual(len(self.requests), 1)
+        self.assertIn('请求过于频繁（HTTP 429）（建议 30s 后重试）', result.stderr)
+        self.assertIn('未扣费', result.stderr)
+        for forbidden in ('yir', 'zenmux', 'openai', '请先恢复已返回的结果'):
+            self.assertNotIn(forbidden, result.stderr)
+        self.assertEqual(self.recovery_files(), [])
+        self.assertEqual(self.request_files(), [])
+
+        self.response_headers = {}
+        self.raw = json.dumps({
+            'request_id': 'req_abcdef12',
+            'error': {'code': 'cost_budget_exceeded', 'message': 'zenmux budget hit'},
+        })
+        result = self.call('image', '<说明>')
+        self.assertEqual(result.returncode, 7)
+        self.assertIn('当前生图额度已达上限（HTTP 429）', result.stderr)
+        self.assertNotIn('zenmux', result.stderr)
+
+        dirty_cases = [
+            ('OpenAI rejected prompt', 'OpenAI'),
+            ('yir 上游报错', 'yir'),
+            ('zenmux 渠道限流', 'zenmux'),
+            ('上游报错', '上游'),
+            ('模型服务限流', '模型服务'),
+            ('供应商异常', '供应商'),
+            ('渠道维护中', '渠道'),
+            ('线路拥堵', '线路'),
+            ('aigocode 限流', 'aigocode'),
+            ('ZenMuxError 异常', 'ZenMuxError'),
+            ('OpenAIError 失败', 'OpenAIError'),
+            ('YirTimeout 超时', 'YirTimeout'),
+            ('Error: boom\n    at handler (/app/index.js:12:3)', 'handler'),
+        ]
+        for status, expected_code in ((400, 2), (429, 7)):
+            for dirty, marker in dirty_cases:
+                with self.subTest(status=status, dirty=dirty):
+                    self.status = status
+                    self.raw = json.dumps({'error': {'message': dirty}})
+                    result = self.call('image', '<说明>')
+                    self.assertEqual(result.returncode, expected_code)
+                    self.assertNotIn(marker, result.stderr)
+                    self.assertNotIn('/app/index.js', result.stderr)
+                    self.assertEqual(self.recovery_files(), [])
+                    self.assertEqual(self.request_files(), [])
+
+    def test_status_5xx_structured_and_unstructured_never_leak_or_leave_files(self):
+        key = '00000000-0000-4000-8000-000000000000'
+        cases = [
+            (504, json.dumps({'request_id': 'req_0123abcd', 'error': {'code': 'timeout', 'message': '<upstream secret>'}})),
+            (502, json.dumps({'request_id': 'req_0123abcd', 'error': {'code': 'upstream_error', 'message': 'ZenMuxError'}})),
+            (503, json.dumps({'request_id': 'req_0123abcd', 'error': {'code': 'unavailable', 'message': 'aigocode down'}})),
+            (503, '<html><provider detail></html>'),
+        ]
+        for extra_args in ((), ('--out', 'assets/recovered.png')):
+            for status, raw in cases:
+                with self.subTest(extra_args=extra_args, status=status):
+                    self.status = status
+                    self.raw = raw
+                    result = self.call('status', key, *extra_args)
+                    self.assertEqual(result.returncode, 7)
+                    self.assertEqual(result.stdout, '')
+                    self.assertIn(f'HTTP {status}', result.stderr)
+                    self.assertIn('请稍后用同一命令重试', result.stderr)
+                    self.assertIn('不要重新生图', result.stderr)
+                    for forbidden in ('未扣费', 'upstream secret', 'ZenMuxError', 'aigocode', 'provider detail', '生成响应保留', '请求信息保留'):
+                        self.assertNotIn(forbidden, result.stderr)
+                    self.assertEqual(self.recovery_files(), [])
+                    self.assertEqual(self.request_files(), [])
+
+    def test_status_and_balance_429_use_command_specific_messages(self):
+        key = '00000000-0000-4000-8000-000000000000'
+        self.status = 429
+        self.response_headers = {'Retry-After': '15'}
+        self.raw = json.dumps({
+            'request_id': 'req_abcdef12',
+            'error': {'code': 'rate_limit_exceeded', 'message': 'aigocode ZenMuxError 429'},
+        })
+
+        for extra_args in ((), ('--out', 'assets/recovered.png')):
+            with self.subTest(command='status', extra_args=extra_args):
+                result = self.call('status', key, *extra_args)
+                self.assertEqual(result.returncode, 7)
+                self.assertEqual(result.stdout, '')
+                self.assertEqual(
+                    result.stderr.strip(),
+                    'oiloil 查询请求过于频繁（HTTP 429）（建议 15s 后重试），请稍后用同一命令重试，不要重新生图。',
+                )
+                for forbidden in ('未扣费', 'aigocode', 'ZenMuxError', '请求信息保留'):
+                    self.assertNotIn(forbidden, result.stderr)
+                self.assertEqual(self.recovery_files(), [])
+                self.assertEqual(self.request_files(), [])
+
+        result = self.call('balance')
+        self.assertEqual(result.returncode, 7)
+        self.assertEqual(result.stdout, '')
+        self.assertEqual(
+            result.stderr.strip(),
+            'oiloil 余额查询过于频繁（HTTP 429）（建议 15s 后重试），请稍后重试；任务照常继续。',
+        )
+        for forbidden in ('未扣费', 'aigocode', 'ZenMuxError'):
+            self.assertNotIn(forbidden, result.stderr)
+
+    def test_status_out_disconnect_leaves_no_request_file(self):
+        key = '00000000-0000-4000-8000-000000000000'
+        self.disconnect = True
+        result = self.call('status', key, '--out', 'assets/lost.png')
+        self.assertEqual(result.returncode, 6)
+        self.assertEqual(result.stdout, '')
+        self.assertEqual(
+            result.stderr.strip(),
+            '连接 oiloil 失败或请求超时，暂时无法查询原请求状态。请检查网络后用同一命令重试；不要重新生图。',
+        )
+        for forbidden in ('原请求幂等键', '请求信息保留在', '生成响应保留'):
+            self.assertNotIn(forbidden, result.stderr)
+        self.assertEqual(self.recovery_files(), [])
+        self.assertEqual(self.request_files(), [])
 
     def test_invalid_balance_is_not_reported_as_success(self):
         for raw in ('{}', '{"balance":"93"}', '{"balance":-1}', 'null', '<invalid>'):

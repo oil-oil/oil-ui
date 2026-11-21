@@ -37,7 +37,7 @@ status 选项：
                         成功结果保留 24 小时；过期或早期请求只能查询状态。
 
 通用选项：
-  --timeout <毫秒>      请求超时，image 默认 120000，其他命令默认 10000；1..900000
+  --timeout <毫秒>      请求超时，image 默认 250000，其他命令默认 10000；1..900000
   --help, -h           打印帮助
 选项可放在子命令前后，可用 --名字=值、--名字 值；-- 之后按位置参数读取。
 不提供画质参数，服务端固定 medium。已有文件不覆盖，自动加序号；
@@ -126,7 +126,7 @@ export function parseArgs(argv) {
     if (opts.out && /[\\/]$/.test(opts.out)) usage('--out 应为文件路径');
     opts.out = path.resolve(opts.out ?? 'assets/generated.png');
   }
-  opts.timeout = Number(opts.timeout ?? (command === 'image' ? 120000 : 10000));
+  opts.timeout = Number(opts.timeout ?? (command === 'image' ? 250000 : 10000));
   if (!Number.isInteger(opts.timeout) || opts.timeout < 1 || opts.timeout > 900000) usage('--timeout 应为 1..900000 的整数');
   return { command, opts };
 }
@@ -199,10 +199,34 @@ async function prepareOutput(out, idempotencyKey) {
   }
 }
 
+const UNSAFE_DETAIL_RE = /(?:上游|模型服务|供应商|渠道|线路)|(?:zenmux|openai|anthropic|gemini|aigocode|cloudflare)|(?:^|[^a-z])(?:yir|vertex)|(?:^|[^a-z])(?:google|replicate|midjourney|provider|upstream|traceback|stack|exception|syntaxerror|typeerror|referenceerror|econnreset|etimedout|enotfound|socket)(?:$|[^a-z])|(?:https?:|file:|at\s+\S+\s*\(|<\/?[a-z]|\\n)/i;
+
+function apiErrorCode(raw) {
+  try {
+    const data = JSON.parse(raw);
+    if (data && typeof data === 'object' && !Array.isArray(data)
+      && typeof data.request_id === 'string' && /^req_[0-9a-f]+$/i.test(data.request_id)
+      && typeof data.error?.code === 'string') {
+      return data.error.code;
+    }
+    return '';
+  } catch { return ''; }
+}
+
+function knownErrorCode(raw) {
+  try {
+    const code = JSON.parse(raw)?.error?.code;
+    return typeof code === 'string' ? code : '';
+  } catch { return ''; }
+}
+
 function errorDetail(raw) {
   try {
     const message = JSON.parse(raw)?.error?.message;
-    return typeof message === 'string' ? message.replace(/\s+/g, ' ').trim().slice(0, 300) : '';
+    if (typeof message !== 'string' || /[\r\n]/.test(message)) return '';
+    const text = message.replace(/\s+/g, ' ').trim();
+    if (!text || text.length > 160 || !/[\u4e00-\u9fff]/.test(text) || UNSAFE_DETAIL_RE.test(text)) return '';
+    return text;
   } catch { return ''; }
 }
 
@@ -222,7 +246,7 @@ async function request(command, opts, token, root, recovery) {
     });
     raw = await response.text();
   } catch {
-    if (recovery) recovery.statusRequired = true;
+    if (recovery && command === 'image') recovery.statusRequired = true;
     throw new CliError(6, command === 'image'
       ? `连接 oiloil 失败或请求超时，暂时没有拿到图片，无法确认本次是否扣费。请用随后给出的 status 命令查询原请求，或到 ${ACCOUNT} 核对记录；不要直接重新生成。`
       : command === 'status'
@@ -243,16 +267,46 @@ async function request(command, opts, token, root, recovery) {
     throw new CliError(7, 'oiloil 检测到重复的幂等键。请用随后给出的 status 命令查询原请求，不要直接重新生成。');
   }
   if (response.status === 429) {
-    const detail = errorDetail(raw);
     const retryAfter = response.headers.get('retry-after')?.trim();
     const retryHint = retryAfter && /^\d+$/.test(retryAfter) ? `（建议 ${retryAfter}s 后重试）` : '';
-    throw new CliError(7, `oiloil 请求频率或额度受限（HTTP 429）${detail ? `：${detail}` : ''}${retryHint}，未收到图片且未扣费。请稍后重试。`);
+    if (command === 'status') {
+      throw new CliError(7, `oiloil 查询请求过于频繁（HTTP 429）${retryHint}，请稍后用同一命令重试，不要重新生图。`);
+    }
+    if (command === 'balance') {
+      throw new CliError(7, `oiloil 余额查询过于频繁（HTTP 429）${retryHint}，请稍后重试；任务照常继续。`);
+    }
+    const code = apiErrorCode(raw) || knownErrorCode(raw);
+    if (code === 'rate_limit_exceeded') {
+      throw new CliError(7, `oiloil 请求过于频繁（HTTP 429）${retryHint}，本次未收到图片且未扣费。请稍后重试。`);
+    }
+    if (code === 'cost_budget_exceeded') {
+      throw new CliError(7, `oiloil 当前生图额度已达上限（HTTP 429）${retryHint}，本次未收到图片且未扣费。请稍后重试。`);
+    }
+    const detail = errorDetail(raw);
+    throw new CliError(7, `oiloil 请求频率或额度受限（HTTP 429）${detail ? `：${detail}` : ''}${retryHint}，本次未收到图片且未扣费。请稍后重试。`);
   }
   if (response.status >= 400 && response.status < 500) {
     throw new CliError(7, `oiloil 拒绝了请求（HTTP ${response.status}），未收到图片。请检查请求后重试。`);
   }
+  if (!response.ok) {
+    if (command === 'image') {
+      const code = response.status >= 500 ? apiErrorCode(raw) : '';
+      if (response.status === 504 && code === 'timeout') {
+        throw new CliError(7, 'oiloil 生成超时（HTTP 504），本次未收到图片且未扣费。请稍后重试。');
+      }
+      if (response.status === 502 && code === 'upstream_error') {
+        throw new CliError(7, 'oiloil 服务暂时繁忙或不可用（HTTP 502），本次未收到图片且未扣费。请稍后重试。');
+      }
+      if (recovery) recovery.statusRequired = true;
+      throw new CliError(7, `oiloil 服务响应异常（HTTP ${response.status}），暂时无法确认本次是否扣费。请用随后给出的 status 命令查询原请求，或到 ${ACCOUNT} 核对记录；不要直接重新生成。`);
+    }
+    if (command === 'status') {
+      throw new CliError(7, `oiloil 服务响应异常（HTTP ${response.status}），暂时无法查询原请求状态。请稍后用同一命令重试，或到 ${ACCOUNT} 核对记录；不要重新生图。`);
+    }
+    throw new CliError(7, `oiloil 服务响应异常（HTTP ${response.status}），暂时无法查询余额。请稍后重试，或到 ${ACCOUNT} 查看；任务照常继续。`);
+  }
   if (recovery) {
-    // Persist before validating image/usage, so a malformed paid result is recoverable.
+    // Persist only 2xx responses before validating image/usage, so a malformed paid result is recoverable.
     try {
       await recovery.handle.writeFile(raw, 'utf8');
       await recovery.handle.sync();
@@ -262,10 +316,6 @@ async function request(command, opts, token, root, recovery) {
       catch { recovery.writeFailed = true; }
     }
     recovery.received = true;
-  }
-  if (!response.ok) {
-    if (recovery) recovery.statusRequired = true;
-    throw new CliError(7, `oiloil 接口返回异常（HTTP ${response.status}），未自动重试。请查询原请求或到 ${ACCOUNT} 核对记录后再决定是否重试；任务照常继续。`);
   }
   try { return JSON.parse(raw); }
   catch { throw new CliError(7, 'oiloil 返回了无法解析的响应，未自动重试；请先核对账户记录。'); }
