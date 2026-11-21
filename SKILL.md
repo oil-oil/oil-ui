@@ -7,7 +7,7 @@ allowed-tools:
   - Bash(python *check_update.py*)
   - Bash(py -3 *check_update.py*)
 metadata:
-  version: "0.34.4"
+  version: "0.34.5"
   compatibility: "Host-neutral UI/UX design workflow (Claude Code, Cursor, Codex, Windsurf, Cline, Antigravity, OpenCode). Optional style-comparison generator requires Python 3.10+ standard library and a modern browser; optional local screenshot, media, and image helper scripts require Node.js 22+ (with local Chrome/Chromium/Edge for screenshots and optional ffmpeg for video). 核心为宿主中立的文本流程，不依赖其他 Skill 或指定模型；可选风格对比页生成器需 Python 3.10+ 标准库与现代浏览器，本机截图、素材筛选与生图辅助脚本需 Node.js 22+（截图需本机 Chrome/Chromium/Edge，录屏可选配 ffmpeg）。实际视觉验收需要看图能力；交互验收需要可操作环境；独立评审需要隔离上下文且能看图的执行者。"
 ---
 
