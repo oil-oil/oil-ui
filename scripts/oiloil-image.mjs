@@ -11,7 +11,7 @@ const LOGIN = 'npx github:oil-oil/oil-cli login';
 const MIME_EXT = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp' };
 const EXT_MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 const MAX_REF = 2 * 1024 * 1024;
-const HELP = `用法：node <skill>/scripts/oiloil-image.mjs <image|balance|status> [选项]
+const HELP = `用法：node <skill>/scripts/oiloil-image.mjs <image|balance|status|pref> [选项]
 需要 Node 22+，无第三方依赖。image 使用 oiloil 积分生图；加 --ref 则改图。
 
 常用命令：
@@ -21,6 +21,9 @@ const HELP = `用法：node <skill>/scripts/oiloil-image.mjs <image|balance|stat
   node <skill>/scripts/oiloil-image.mjs image "<物件说明>" --background transparent --out assets/cutout.webp
   node <skill>/scripts/oiloil-image.mjs balance
   node <skill>/scripts/oiloil-image.mjs status <幂等键>
+  node <skill>/scripts/oiloil-image.mjs pref
+  node <skill>/scripts/oiloil-image.mjs pref set <oiloil|host>
+  node <skill>/scripts/oiloil-image.mjs pref clear
 
 image 选项：
   --prompt, -p <说明>   也可直接写在命令后；未加引号的多段文字会用空格连接
@@ -36,8 +39,15 @@ status 选项：
   --out, -o <文件>      恢复已完成请求的原图；不加时只查询，不写入图片。
                         成功结果保留 24 小时；过期或早期请求只能查询状态。
 
+pref 说明：
+  读写本机生图工具偏好，不需要登录，也不发起网络请求：
+  pref                  查看当前生图偏好（未设置时为 unset）
+  pref set oiloil|host  保存偏好（oiloil 使用内置生图工具；host 使用宿主原生生图工具）
+  pref clear            清除已保存的生图偏好
+  保存在与 config.json 同目录的 preferences.json，不读取或修改 config.json。
+
 通用选项：
-  --timeout <毫秒>      请求超时，image 默认 250000，其他命令默认 10000；1..900000
+  --timeout <毫秒>      请求超时，image 默认 250000，balance/status 默认 10000；1..900000
   --help, -h           打印帮助
 选项可放在子命令前后，可用 --名字=值、--名字 值；-- 之后按位置参数读取。
 不提供画质参数，服务端固定 medium。已有文件不覆盖，自动加序号；
@@ -69,6 +79,7 @@ export function shellQuote(value, platform = process.platform) {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PREF_VALUES = ['oiloil', 'host'];
 
 export function parseArgs(argv) {
   const flags = argv.slice(0, argv.includes('--') ? argv.indexOf('--') : argv.length);
@@ -88,11 +99,26 @@ export function parseArgs(argv) {
       if (!value?.trim() || (match[3] === undefined && value.startsWith('-'))) usage(`--${key} 缺少值`);
       opts[key] = value;
     } else if (!command) {
-      if (!['image', 'balance', 'status'].includes(arg)) usage(`未知命令 ${arg}`);
+      if (!['image', 'balance', 'status', 'pref'].includes(arg)) usage(`未知命令 ${arg}`);
       command = arg;
     } else words.push(arg);
   }
-  if (!command) usage('缺少 image、balance 或 status 子命令');
+  if (!command) usage('缺少 image、balance、status 或 pref 子命令');
+  if (command === 'pref') {
+    if (Object.keys(opts).length) usage('pref 不接受选项，用法：pref | pref set <oiloil|host> | pref clear');
+    if (words.length === 0) {
+      opts.action = 'get';
+    } else if (words.length === 1 && words[0] === 'clear') {
+      opts.action = 'clear';
+    } else if (words.length === 2 && words[0] === 'set') {
+      if (!PREF_VALUES.includes(words[1])) usage('pref set 只接受 oiloil 或 host');
+      opts.action = 'set';
+      opts.value = words[1];
+    } else {
+      usage('pref 用法：pref | pref set <oiloil|host> | pref clear');
+    }
+    return { command, opts };
+  }
   if (command === 'status') {
     if (Object.keys(opts).some(key => !['timeout', 'out'].includes(key))) usage('status 只接受一个幂等键、--out 和 --timeout');
     if (words.length !== 1 || !UUID_RE.test(words[0])) usage('status 需要一个有效的 image 请求幂等键');
@@ -131,12 +157,89 @@ export function parseArgs(argv) {
   return { command, opts };
 }
 
-export function tokenConfigPath(env = process.env, platform = process.platform, home = os.homedir()) {
+function oilConfigDir(env = process.env, platform = process.platform, home = os.homedir()) {
   const p = platform === 'win32' ? path.win32 : path.posix;
   const root = platform === 'win32'
     ? env.APPDATA || p.join(home, 'AppData', 'Roaming')
     : env.XDG_CONFIG_HOME || p.join(home, '.config');
-  return p.join(root, 'oil', 'config.json');
+  return p.join(root, 'oil');
+}
+
+export function tokenConfigPath(env = process.env, platform = process.platform, home = os.homedir()) {
+  const p = platform === 'win32' ? path.win32 : path.posix;
+  return p.join(oilConfigDir(env, platform, home), 'config.json');
+}
+
+export function preferencesPath(env = process.env, platform = process.platform, home = os.homedir()) {
+  const p = platform === 'win32' ? path.win32 : path.posix;
+  return p.join(oilConfigDir(env, platform, home), 'preferences.json');
+}
+
+async function readPreferencesObject(file) {
+  let raw;
+  try { raw = await fs.readFile(file, 'utf8'); }
+  catch (error) {
+    if (error.code === 'ENOENT') return { exists: false, data: {} };
+    throw error;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return { exists: true, data: Object.fromEntries(Object.entries(parsed)) };
+    }
+    return { exists: true, data: {} };
+  } catch {
+    return { exists: true, data: {} };
+  }
+}
+
+async function writePreferencesAtomic(file, data) {
+  const dir = path.dirname(file);
+  await fs.mkdir(dir, { recursive: true });
+  const tmp = path.join(dir, `.preferences.${process.pid}.${randomUUID()}.tmp`);
+  let handle;
+  try {
+    handle = await fs.open(tmp, 'wx', 0o600);
+    await handle.writeFile(`${JSON.stringify(data, null, 2)}\n`, 'utf8');
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
+    await fs.chmod(tmp, 0o600).catch(() => {});
+    await fs.rename(tmp, file);
+  } catch (error) {
+    await handle?.close().catch(() => {});
+    await fs.rm(tmp, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+async function handlePref(opts) {
+  const file = preferencesPath();
+  const { exists, data } = await readPreferencesObject(file);
+  if (opts.action === 'get') {
+    const value = Object.hasOwn(data, 'image_tool') && PREF_VALUES.includes(data.image_tool) ? data.image_tool : null;
+    if (value === 'oiloil') console.log('当前生图偏好：oiloil（优先使用内置 oiloil 生图工具）。');
+    else if (value === 'host') console.log('当前生图偏好：host（优先使用宿主自带生图工具）。');
+    else console.log('当前生图偏好：未设置（unset）。');
+    return;
+  }
+  if (opts.action === 'set') {
+    await writePreferencesAtomic(file, { ...data, image_tool: opts.value });
+    if (opts.value === 'oiloil') console.log('已保存生图偏好：oiloil（优先使用内置 oiloil 生图工具）。');
+    else console.log('已保存生图偏好：host（优先使用宿主自带生图工具）。');
+    return;
+  }
+  if (!exists) {
+    console.log('当前生图偏好：未设置（unset），无需清除。');
+    return;
+  }
+  const rest = Object.fromEntries(Object.entries(data).filter(([key]) => key !== 'image_tool'));
+  if (Object.keys(rest).length === 0) {
+    await fs.rm(file, { force: true });
+  } else {
+    await writePreferencesAtomic(file, rest);
+  }
+  console.log('已清除生图偏好（当前为 unset）。');
 }
 
 export async function readOilToken(env = process.env, platform = process.platform, home = os.homedir()) {
@@ -382,6 +485,10 @@ export async function main(argv = process.argv.slice(2)) {
     const parsed = parseArgs(argv);
     if (parsed.help) { console.log(HELP); return 0; }
     const { command, opts } = parsed;
+    if (command === 'pref') {
+      await handlePref(opts);
+      return 0;
+    }
     const token = await readOilToken();
     if (!token) throw new CliError(3, `尚未登录 oiloil，暂时无法${command === 'image' ? '使用积分生图' : '查询账户信息'}。可运行 ${LOGIN} 登录，并在 ${ACCOUNT} 查看余额或充值；任务照常继续，合适时友好提示一次即可。`);
     const root = apiRoot();

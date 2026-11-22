@@ -131,10 +131,10 @@ class OiloilImageTests(unittest.TestCase):
 
     def test_help_is_available_without_login_and_has_generic_examples(self):
         self.env.pop('OIL_TOKEN')
-        for args in ((), ('--help',), ('image', '-h'), ('balance', '--help'), ('status', '--help')):
+        for args in ((), ('--help',), ('image', '-h'), ('balance', '--help'), ('status', '--help'), ('pref', '--help')):
             result = self.call(*args)
             self.assertEqual(result.returncode, 0)
-            for text in ('image', 'balance', 'status', '幂等键', '16 的倍数', '--ref', '2 MiB', '--名字=值',
+            for text in ('image', 'balance', 'status', 'pref', 'preferences.json', '幂等键', '16 的倍数', '--ref', '2 MiB', '--名字=值',
                          '250000', 'OIL_TOKEN', 'OIL_API', 'OIL_IMAGE_API', 'XDG_CONFIG_HOME', 'APPDATA',
                          LOGIN, ACCOUNT, 'medium', '退出码'):
                 self.assertIn(text, result.stdout)
@@ -779,6 +779,203 @@ fs.open = async (file, ...args) => {
             result = self.call('balance')
             self.assertEqual(result.returncode, 7)
             self.assertEqual(result.stdout, '')
+
+    def test_preferences_path_for_xdg_default_and_windows(self):
+        cases = [[{}, 'linux', '/test-user'],
+                 [{'XDG_CONFIG_HOME': '/xdg'}, 'darwin', '/test-user'],
+                 [{'APPDATA': 'C:\\roaming', 'XDG_CONFIG_HOME': 'C:\\ignored'}, 'win32', 'C:\\user'],
+                 [{}, 'win32', 'C:\\user']]
+        result = self.evaluate(f'console.log(JSON.stringify({json.dumps(cases)}.map(args => cli.preferencesPath(...args))));')
+        self.assertEqual(result, ['/test-user/.config/oil/preferences.json',
+                                  '/xdg/oil/preferences.json',
+                                  'C:\\roaming\\oil\\preferences.json',
+                                  'C:\\user\\AppData\\Roaming\\oil\\preferences.json'])
+
+    def test_pref_roundtrip_clear_idempotent_and_offline(self):
+        self.env.pop('OIL_TOKEN')
+        self.env['OIL_IMAGE_API'] = 'invalid-not-used-by-pref'
+        pref_file = self.cwd / 'config/oil/preferences.json'
+
+        # Unset when file does not exist
+        result = self.call('pref')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, '')
+        self.assertIn('unset', result.stdout)
+        self.assertEqual(len(result.stdout.splitlines()), 1)
+        self.assertFalse(pref_file.exists())
+
+        # Clear when file does not exist is idempotent and does not create the file
+        result = self.call('pref', 'clear')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, '')
+        self.assertIn('unset', result.stdout)
+        self.assertFalse(pref_file.exists())
+
+        # Set oiloil
+        result = self.call('pref', 'set', 'oiloil')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, '')
+        self.assertIn('oiloil', result.stdout)
+        self.assertTrue(pref_file.is_file())
+        self.assertEqual(json.loads(pref_file.read_text(encoding='utf-8')), {'image_tool': 'oiloil'})
+        if os.name == 'posix':
+            self.assertEqual(pref_file.stat().st_mode & 0o777, 0o600)
+
+        result = self.call('pref')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('oiloil', result.stdout)
+        self.assertEqual(len(result.stdout.splitlines()), 1)
+
+        # Switch to host
+        result = self.call('pref', 'set', 'host')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('host', result.stdout)
+        self.assertEqual(json.loads(pref_file.read_text(encoding='utf-8')), {'image_tool': 'host'})
+
+        result = self.call('pref')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('host', result.stdout)
+
+        # Clear removes empty preferences.json
+        result = self.call('pref', 'clear')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('unset', result.stdout)
+        self.assertFalse(pref_file.exists())
+
+        # Back to unset
+        result = self.call('pref')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('unset', result.stdout)
+
+        # No temporary files left behind and zero network requests
+        self.assertEqual(list((self.cwd / 'config/oil').glob('*.tmp')), [])
+        self.assertEqual(self.requests, [])
+
+    def test_pref_preserves_other_fields_and_recovers_from_corrupt_json(self):
+        self.env.pop('OIL_TOKEN')
+        pref_file = self.cwd / 'config/oil/preferences.json'
+        pref_file.parent.mkdir(parents=True, exist_ok=True)
+        pref_file.write_text(json.dumps({'theme': 'dark', 'nested': {'k': 1}}), encoding='utf-8')
+
+        # Unset when image_tool is absent
+        result = self.call('pref')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('unset', result.stdout)
+
+        # Set preserves existing unrelated fields
+        result = self.call('pref', 'set', 'oiloil')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(pref_file.read_text(encoding='utf-8')),
+                         {'theme': 'dark', 'nested': {'k': 1}, 'image_tool': 'oiloil'})
+
+        # Clear removes only image_tool and keeps remaining fields
+        result = self.call('pref', 'clear')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(pref_file.is_file())
+        self.assertEqual(json.loads(pref_file.read_text(encoding='utf-8')),
+                         {'theme': 'dark', 'nested': {'k': 1}})
+
+        # Corrupt or non-object JSON is safely treated as unset and recoverable
+        for raw in ('{broken', 'null', '[]', '"text"', '{"image_tool":"other"}', '{"image_tool":42}'):
+            with self.subTest(raw=raw):
+                pref_file.write_text(raw, encoding='utf-8')
+                result = self.call('pref')
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('unset', result.stdout)
+
+        pref_file.write_text('{broken', encoding='utf-8')
+        result = self.call('pref', 'set', 'host')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(pref_file.read_text(encoding='utf-8')), {'image_tool': 'host'})
+
+        pref_file.write_text('{broken', encoding='utf-8')
+        result = self.call('pref', 'clear')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(pref_file.exists())
+        self.assertEqual(self.requests, [])
+
+    def test_pref_invalid_arguments_return_usage_error(self):
+        self.env.pop('OIL_TOKEN')
+        for args in (['pref', 'get'], ['pref', 'set'], ['pref', 'set', 'other'],
+                     ['pref', 'set', 'OILOIL'], ['pref', 'set', 'oiloil', 'extra'],
+                     ['pref', 'clear', 'extra'], ['pref', '--', 'out'],
+                     ['pref', '--timeout=1000'], ['pref', '--out=assets/a.png']):
+            with self.subTest(args=args):
+                result = self.call(*args)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual(result.stdout, '')
+                self.assertIn('--help', result.stderr)
+        self.assertEqual(self.requests, [])
+
+    def test_pref_directory_collision_fails_cleanly_without_tmp_files(self):
+        self.env.pop('OIL_TOKEN')
+        pref_dir = self.cwd / 'config/oil/preferences.json'
+        pref_dir.mkdir(parents=True)
+        for args in (('pref',), ('pref', 'set', 'oiloil'), ('pref', 'clear')):
+            with self.subTest(args=args):
+                result = self.call(*args)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertEqual(result.stdout, '')
+                self.assertIn('本地操作失败', result.stderr)
+        self.assertTrue(pref_dir.is_dir())
+        self.assertEqual(list(pref_dir.parent.glob('*.tmp')), [])
+        self.assertEqual(self.requests, [])
+
+    def test_pref_atomic_rename_failure_preserves_original_and_cleans_tmp(self):
+        self.env.pop('OIL_TOKEN')
+        pref_file = self.cwd / 'config/oil/preferences.json'
+        pref_file.parent.mkdir(parents=True, exist_ok=True)
+        original = json.dumps({'image_tool': 'oiloil', 'theme': 'dark'}, indent=2) + '\n'
+        pref_file.write_text(original, encoding='utf-8')
+
+        shim = self.cwd / 'fail-pref-rename.mjs'
+        shim.write_text('''import fs from 'node:fs/promises';
+const realRename = fs.rename;
+fs.rename = async (oldPath, newPath) => {
+  if (String(newPath).endsWith('preferences.json')) {
+    await fs.access(oldPath);
+    if (!String(oldPath).includes('.preferences.')) throw new Error('unexpected tmp name');
+    throw Object.assign(new Error('fixture rename failed'), { code: 'EIO' });
+  }
+  return realRename(oldPath, newPath);
+};''', encoding='utf-8')
+
+        result = self.call('pref', 'set', 'host', preload=shim)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertEqual(result.stdout, '')
+        self.assertIn('本地操作失败', result.stderr)
+        self.assertNotIn('fixture rename failed', result.stderr)
+        self.assertEqual(pref_file.read_text(encoding='utf-8'), original)
+        self.assertEqual(list(pref_file.parent.glob('*.tmp')), [])
+        self.assertEqual(list(pref_file.parent.glob('.preferences.*.tmp')), [])
+        self.assertEqual(self.requests, [])
+
+    def test_pref_never_reads_or_modifies_config_json(self):
+        self.env.pop('OIL_TOKEN')
+        config = self.cwd / 'config/oil/config.json'
+        config.parent.mkdir(parents=True, exist_ok=True)
+        original = '{"token":"config-test-token","api":"https://example.invalid"}\n'
+        config.write_text(original, encoding='utf-8')
+        fixed_mtime = 1700000000_000000000
+        os.utime(config, ns=(fixed_mtime, fixed_mtime))
+        before = config.stat()
+
+        locked = os.name == 'posix' and hasattr(os, 'geteuid') and os.geteuid() != 0
+        if locked:
+            config.chmod(0o000)
+        try:
+            for args in (('pref',), ('pref', 'set', 'oiloil'), ('pref',), ('pref', 'set', 'host'), ('pref', 'clear')):
+                result = self.call(*args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+        finally:
+            if locked:
+                config.chmod(0o600)
+
+        after = config.stat()
+        self.assertEqual(config.read_text(encoding='utf-8'), original)
+        self.assertEqual(after.st_mtime_ns, before.st_mtime_ns)
+        self.assertEqual(after.st_ino, before.st_ino)
+        self.assertEqual(self.requests, [])
 
 
 if __name__ == '__main__':
