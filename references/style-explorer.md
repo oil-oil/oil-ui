@@ -28,6 +28,7 @@
 | 需要启动服务才能看的页面 | 候选加 `"kind": "url"` 和本机 `url`；顶层可加 `serve` 启动说明 |
 | 改动已有页面 | 把现状也放进来，并加 `"baseline": true` |
 | 只有截图 | 候选加 `"kind": "image"`，`source` 指向截图 |
+| 附带完整风格目录入口 | 顶层加 `"catalog"`（本地 HTML 路径或 `https://` 地址；图片候选同级存在 `catalog.html` 时自动识别，设 `false` 关闭） |
 
 HTML 和图片候选只需填写 `source`；本机地址候选按上表填写 `url`。候选来自方向卡时，每个候选再填 `name`、`concept`（北极星那一句）、`typography`、`palette`（色值数组）和 `traits`，对比页把它们和画面一起展示，用户靠这些挑选；省略的项不显示。其他字段写法见生成器的 `--help`。
 

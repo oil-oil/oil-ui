@@ -565,6 +565,33 @@ def local_url(value: str, label: str) -> str:
     return value
 
 
+def catalog_link(value, base: Path) -> tuple[str, Path | None]:
+    """Accept an existing local HTML file or a safe https:// URL."""
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("manifest.catalog 必须是本地 HTML 文件路径或 https:// 地址，或设为 false 关闭")
+    raw_val = value.strip()
+    is_windows_abs = bool(Path(raw_val).drive and Path(raw_val).is_absolute())
+    if raw_val.startswith("//"):
+        raise ValueError(f"manifest.catalog 只支持本地 HTML 文件或 https:// 地址，收到的是 {raw_val}")
+    if not is_windows_abs and re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", raw_val):
+        try:
+            parts = urlsplit(raw_val)
+            parts.port
+        except ValueError:
+            raise ValueError(f"manifest.catalog 不是有效的 https:// 地址，收到的是 {raw_val}") from None
+        if (parts.scheme.lower() != "https" or not raw_val[:8].lower() == "https://"
+                or not parts.hostname or parts.username or parts.password
+                or any(ch.isspace() for ch in raw_val)):
+            raise ValueError(f"manifest.catalog 只支持本地 HTML 文件或 https:// 地址，收到的是 {raw_val}")
+        return "https://" + raw_val[8:], None
+    target = (base / raw_val).resolve()
+    if not target.is_file():
+        raise ValueError(f"manifest.catalog 找不到本地 HTML 文件：{raw_val}（解析为 {target}）")
+    if target.suffix.lower() not in (".html", ".htm"):
+        raise ValueError(f"manifest.catalog 本地文件必须是 .html 或 .htm：{raw_val}")
+    return target.as_uri(), target
+
+
 HEX_COLOR = re.compile(r"#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})(?![0-9a-zA-Z_])")
 
 
@@ -664,6 +691,13 @@ def _load_manifest_data(raw: dict, path: Path, *, include_manifest: bool) -> tup
         if raw["lang"] not in ("zh", "en"):
             problems.append('manifest.lang 只能是 "zh" 或 "en"')
         data["lang"] = raw["lang"]
+    catalog_target = None
+    if "catalog" in raw:
+        raw_catalog = raw["catalog"]
+        if raw_catalog is not False and raw_catalog is not None:
+            resolved = attempt(lambda: catalog_link(raw_catalog, path.parent))
+            if resolved is not None:
+                data["catalog"], catalog_target = resolved
     if "serve" in raw:
         serve = raw["serve"]
         if not isinstance(serve, dict):
@@ -690,6 +724,7 @@ def _load_manifest_data(raw: dict, path: Path, *, include_manifest: bool) -> tup
     if include_manifest:
         inputs.add(path.resolve())
     output = []
+    image_sources: list[Path] = []
     viewport = None
     if "nativeViewport" in raw:
         affected = "、".join(str(c.get("id", i)) for i, c in enumerate(candidates, 1)
@@ -753,6 +788,8 @@ def _load_manifest_data(raw: dict, path: Path, *, include_manifest: bool) -> tup
                 source = attempt(source_file)
                 if source:
                     inputs.add(source)
+                    if kind == "image":
+                        image_sources.append(source)
         colors = attempt(lambda: palette(candidate.get("palette"), where)) if "palette" in candidate else None
         texts = {name: attempt(lambda name=name: text_field(candidate, name, where=where))
                  for name in ("concept", "typography") if name in candidate}
@@ -785,6 +822,15 @@ def _load_manifest_data(raw: dict, path: Path, *, include_manifest: bool) -> tup
         problems.append("最多只能有一个基线候选（baseline: true）")
     if problems:
         raise ManifestError(problems)
+    if "catalog" not in raw and image_sources:
+        parents = {src.parent.resolve() for src in image_sources}
+        if len(parents) == 1:
+            candidate_catalog = (next(iter(parents)) / "catalog.html").resolve()
+            if candidate_catalog.is_file():
+                data["catalog"] = candidate_catalog.as_uri()
+                catalog_target = candidate_catalog
+    if catalog_target is not None:
+        inputs.add(catalog_target)
     # The current version always sits first so every direction is read against it.
     output.sort(key=lambda c: not c["baseline"])
     data["candidates"] = output
@@ -893,6 +939,8 @@ HELP_EPILOG = """\
 可选字段：
   schemaVersion     顶层 manifest 版本号，省略时按 1。
   lang              顶层。"zh" 或 "en"，只决定对比页外壳的语言；省略时按浏览器语言。
+  catalog           顶层。全部风格目录页链接，认本地 HTML 路径或 https:// 地址，设 false 关闭；
+                    省略且图片候选同级存在 catalog.html 时自动识别。
   round             顶层。轮次，例如 "01"，会出现在用户复制的选择里。
   nativeViewport    固定画布的原生视口。写在顶层对所有候选生效，写在候选里只对它生效。
                     认 "1920x1080"、"1920×1080" 和 {"width": 1920, "height": 1080}。

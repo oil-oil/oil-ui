@@ -1041,6 +1041,143 @@ console.log(JSON.stringify(result));
         directory_candidates = self.payload(directory_output.read_text(encoding="utf-8"))["candidates"]
         self.assertEqual([c["name"] for c in directory_candidates], ["First option", "second"])
 
+    def test_catalog_auto_detects_sibling_catalog_html_for_image_candidates(self):
+        png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7ioAAAAASUVORK5CYII=")
+        previews = self.folder / "previews"
+        previews.mkdir()
+        (previews / "a.png").write_bytes(png)
+        (previews / "b.png").write_bytes(png)
+        catalog = previews / "catalog.html"
+        catalog.write_text("<!doctype html><title>Catalog</title>", encoding="utf-8")
+        self.data["candidates"] = [
+            {"id": "a", "name": "方向一", "kind": "image", "source": "previews/a.png"},
+            {"id": "b", "name": "方向二", "kind": "image", "source": "previews/b.png"},
+        ]
+        self.save()
+        builder.build(self.manifest, self.output)
+        payload = self.payload(self.output.read_text(encoding="utf-8"))
+        self.assertEqual(payload["catalog"], catalog.resolve().as_uri())
+
+        # Mixed parent directories do not auto-detect.
+        other = self.folder / "other"
+        other.mkdir()
+        (other / "c.png").write_bytes(png)
+        self.data["candidates"].append({"id": "c", "name": "方向三", "kind": "image", "source": "other/c.png"})
+        self.save()
+        builder.build(self.manifest, self.output, force=True)
+        self.assertNotIn("catalog", self.payload(self.output.read_text(encoding="utf-8")))
+
+    def test_catalog_explicit_local_html_and_https_url(self):
+        local_html = self.folder / "all-styles.html"
+        local_htm = self.folder / "all-styles.htm"
+        local_html.write_text("<!doctype html><title>All</title>", encoding="utf-8")
+        local_htm.write_text("<!doctype html><title>All</title>", encoding="utf-8")
+        cases = [
+            ("all-styles.html", local_html.resolve().as_uri()),
+            (str(local_htm), local_htm.resolve().as_uri()),
+            ("https://example.com/styles/catalog.html", "https://example.com/styles/catalog.html"),
+            ("HTTPS://example.com/styles", "https://example.com/styles"),
+        ]
+        for value, expected in cases:
+            with self.subTest(value=value):
+                self.data["catalog"] = value
+                self.save()
+                builder.build(self.manifest, self.output, force=True)
+                self.assertEqual(self.payload(self.output.read_text(encoding="utf-8"))["catalog"], expected)
+
+    def test_catalog_false_or_null_disables_auto_detect_and_html_omits_catalog(self):
+        # Plain HTML candidates omit catalog even if a sibling catalog.html exists.
+        (self.folder / "catalog.html").write_text("<!doctype html><title>Catalog</title>", encoding="utf-8")
+        builder.build(self.manifest, self.output)
+        self.assertNotIn("catalog", self.payload(self.output.read_text(encoding="utf-8")))
+
+        png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7ioAAAAASUVORK5CYII=")
+        (self.folder / "a.png").write_bytes(png)
+        self.data["candidates"] = [{"id": "a", "name": "方向一", "kind": "image", "source": "a.png"}]
+        for disabled in (False, None):
+            with self.subTest(disabled=disabled):
+                self.data["catalog"] = disabled
+                self.save()
+                builder.build(self.manifest, self.output, force=True)
+                self.assertNotIn("catalog", self.payload(self.output.read_text(encoding="utf-8")))
+
+    def test_catalog_rejects_unsafe_protocols_missing_files_and_invalid_types(self):
+        builder.build(self.manifest, self.output)
+        original = self.output.read_bytes()
+        (self.folder / "note.txt").write_text("plain", encoding="utf-8")
+        (self.folder / "subdir").mkdir()
+        invalid = (
+            "javascript:alert(1)",
+            "data:text/html,<h1>x</h1>",
+            "vbscript:msgbox(1)",
+            "http://example.com/catalog.html",
+            "file:///tmp/catalog.html",
+            "//example.com/catalog.html",
+            "https://",
+            "https://example.com/a b",
+            "missing.html",
+            "note.txt",
+            "subdir",
+            "",
+            "   ",
+            True,
+            0,
+            123,
+            [],
+            {},
+        )
+        for value in invalid:
+            with self.subTest(value=value):
+                self.data["catalog"] = value
+                self.save()
+                with self.assertRaises(builder.ManifestError) as caught:
+                    builder.build(self.manifest, self.output, force=True)
+                self.assertIn("manifest.catalog", str(caught.exception))
+                self.assertEqual(self.output.read_bytes(), original)
+
+    @unittest.skipUnless(shutil.which("node") and (shutil.which("google-chrome") or shutil.which("chromium") or
+                         Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome").is_file()),
+                         "Chrome/Chromium is needed for rendered catalog link checks")
+    def test_rendered_catalog_link_visibility_and_protocol_guard(self):
+        probe = r"""<script>
+(()=>{
+ const link=document.querySelector('#catalog-link');
+ const out=document.createElement('pre');out.id='catalog-result';
+ out.textContent=JSON.stringify({hidden:link.hidden,href:link.getAttribute('href'),text:link.textContent,aria:link.getAttribute('aria-label')});
+ document.body.append(out);
+})();
+</script>"""
+        # 1. Plain HTML candidate -> hidden
+        builder.build(self.manifest, self.output)
+        self.output.write_text(self.output.read_text(encoding="utf-8").replace("</body></html>", probe + "</body></html>"), encoding="utf-8")
+        run = self.run_browser_probe("catalog-result", "chrome-catalog-hidden")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(json.loads(run.stdout)["hidden"], True)
+
+        # 2. Explicit https catalog in zh and en -> visible with localized text
+        for lang, expected_text in (("zh", "查看全部风格 ↗"), ("en", "All styles ↗")):
+            with self.subTest(lang=lang):
+                self.data["lang"] = lang
+                self.data["catalog"] = "https://example.com/catalog"
+                self.save()
+                builder.build(self.manifest, self.output, force=True)
+                self.output.write_text(self.output.read_text(encoding="utf-8").replace("</body></html>", probe + "</body></html>"), encoding="utf-8")
+                run = self.run_browser_probe("catalog-result", f"chrome-catalog-{lang}")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                observed = json.loads(run.stdout)
+                self.assertEqual(observed["hidden"], False)
+                self.assertEqual(observed["href"], "https://example.com/catalog")
+                self.assertEqual(observed["text"], expected_text)
+
+        # 3. Runtime guard rejects javascript: even if payload were tampered
+        tampered = self.output.read_text(encoding="utf-8").replace("https://example.com/catalog", "javascript:alert(1)")
+        self.output.write_text(tampered, encoding="utf-8")
+        run = self.run_browser_probe("catalog-result", "chrome-catalog-guard")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        observed = json.loads(run.stdout)
+        self.assertEqual(observed["hidden"], True)
+        self.assertIsNone(observed["href"])
+
 
 if __name__ == "__main__":
     unittest.main()
