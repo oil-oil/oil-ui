@@ -15,10 +15,11 @@
 .brand{display:flex;align-items:center;gap:10px;flex:none;color:var(--ink);text-decoration:none}.brand img{width:30px;height:30px;display:block;transition:transform .5s var(--snap)}.brand:hover img{transform:rotate(-10deg) scale(1.06)}.brand:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:6px}
 .wm{font-family:var(--brand);font-size:36px;line-height:1;font-weight:400;letter-spacing:-.025em;white-space:nowrap}.pro-badge{align-self:center;margin-left:-2px;padding:4px 6px;border-radius:3px;background:var(--chip);color:var(--accent);font-family:var(--sans);font-size:10px;font-weight:600;line-height:1;letter-spacing:.08em}
 .sep{width:1px;height:18px;background:var(--line-2);flex:none}.proj{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar-c{display:flex;gap:8px;flex-wrap:wrap;min-width:0}
+.bar-c{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
 .seg{position:relative;display:flex;padding:2px;border-radius:4px;background:var(--well)}
 .seg button{position:relative;z-index:1;font-size:13px;line-height:1.5;padding:4px 11px;border-radius:3px;color:var(--soft);white-space:nowrap;transition:color .2s}.seg button:hover{color:var(--text)}.seg button[aria-pressed=true]{color:var(--accent)}
 .thumb{position:absolute;left:0;top:0;width:0;border-radius:3px;background:var(--chip);box-shadow:inset 0 0 0 .5px #435a4714;transition:transform var(--snap-d) var(--snap),width var(--snap-d) var(--snap)}
+.catalog-link{display:inline-flex;align-items:center;gap:4px;font-size:13px;line-height:1.5;padding:5px 11px;border-radius:4px;border:1px solid var(--line);background:var(--canvas);color:var(--soft);text-decoration:none;white-space:nowrap;transition:color .2s,background .2s,border-color .2s}.catalog-link:hover{color:var(--text);background:var(--chip);border-color:var(--line-2)}
 
 .intro{max-width:1840px;margin:0 auto;padding:28px 24px 0}.intro p{font-size:14px;line-height:1.75;color:var(--soft);max-width:68ch}
 
@@ -96,7 +97,7 @@ html[data-vt=reshape]::view-transition-old(*):only-child{animation:vt-out .18s v
 html[data-vt=reshape]::view-transition-new(*):only-child{animation:vt-in .3s .08s ease-out both}
 
 @media(max-width:1180px){.grid{--cols:2!important}.bar{grid-template-columns:minmax(0,1fr) auto;row-gap:10px}.loupe{grid-template-columns:minmax(0,1fr) 280px}}
-@media(max-width:760px){.bar{grid-template-columns:1fr;padding:10px 16px}.bar-c .seg{min-width:0}.bar-c .seg button{padding-inline:9px}.bar-c{flex-wrap:wrap}.intro{padding:24px 16px 0}.grid{--cols:1!important;padding:24px 16px 48px;gap:48px}.loupe{position:static;display:flex;flex-direction:column}.surface{flex:none}.track{height:auto;align-items:flex-start}.slide{height:auto;padding:16px 12px}.info{border-left:0;border-top:1px solid var(--line)}.film{display:flex;overflow-x:auto}.film button{flex:none}.info-body{padding:20px 16px}.nav{display:none}}
+@media(max-width:760px){.bar{grid-template-columns:1fr;padding:10px 16px}.bar-c .seg{min-width:0}.bar-c .seg button{padding-inline:9px}.catalog-link{padding-inline:9px}.bar-c{flex-wrap:wrap}.intro{padding:24px 16px 0}.grid{--cols:1!important;padding:24px 16px 48px;gap:48px}.loupe{position:static;display:flex;flex-direction:column}.surface{flex:none}.track{height:auto;align-items:flex-start}.slide{height:auto;padding:16px 12px}.info{border-left:0;border-top:1px solid var(--line)}.film{display:flex;overflow-x:auto}.film button{flex:none}.info-body{padding:20px 16px}.nav{display:none}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:0s!important;animation-duration:0s!important;animation-delay:0s!important}.frame:hover{transform:none}}
 </style></head><body>
 <header class="bar" id="bar" hidden>
@@ -104,6 +105,7 @@ html[data-vt=reshape]::view-transition-new(*):only-child{animation:vt-in .3s .08
  <div class="bar-c">
   <div class="seg" role="group" data-i18n-aria-label="layoutLabel"><span class="thumb" aria-hidden="true"></span><button type="button" data-layout="compare" aria-pressed="true" data-i18n="compare"></button><button type="button" data-layout="loupe" aria-pressed="false" data-i18n="loupe"></button></div>
   <div class="seg" role="group" data-i18n-aria-label="viewportLabel"><span class="thumb" aria-hidden="true"></span><button type="button" data-viewport="desktop" aria-pressed="true" data-i18n="desktop"></button><button type="button" data-viewport="mobile" aria-pressed="false" data-i18n="mobile"></button></div>
+  <a class="catalog-link" id="catalog-link" hidden target="_blank" rel="noopener noreferrer" data-i18n="catalogLink" data-i18n-aria-label="catalogLinkLabel"></a>
  </div>
 </header>
 <div id="compare-view" hidden>
@@ -136,6 +138,8 @@ const I18N = {
     "viewportLabel": "预览视口",
     "desktop": "桌面 1280",
     "mobile": "手机 390",
+    "catalogLink": "查看全部风格 ↗",
+    "catalogLinkLabel": "在新标签页查看全部风格",
     "candidates": "候选方向",
     "singleView": "单张查看",
     "previous": "上一个方向",
@@ -180,6 +184,8 @@ const I18N = {
     "viewportLabel": "Preview size",
     "desktop": "Desktop 1280",
     "mobile": "Mobile 390",
+    "catalogLink": "All styles ↗",
+    "catalogLinkLabel": "Browse all styles in a new tab",
     "candidates": "Design directions",
     "singleView": "Single view",
     "previous": "Previous direction",
@@ -280,6 +286,7 @@ function t(key, values={}) {
 
  $('#project').textContent=DATA.project||'';
  $('#brief').textContent=DATA.brief||'';
+ if(typeof DATA.catalog==='string'&&(DATA.catalog.startsWith('file://')||DATA.catalog.startsWith('https://'))){const link=$('#catalog-link');link.href=DATA.catalog;link.hidden=false;}
 
  function stripMini(c){if(!c.palette?.length)return null;const s=el('span','strip-mini');c.palette.forEach(h=>{const i=el('i');i.style.background=h;s.append(i);});return s;}
  function stage(c,interactive){
