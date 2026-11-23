@@ -10,12 +10,14 @@ import os
 import re
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 from urllib.parse import quote
+import zlib
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -273,6 +275,185 @@ console.log(JSON.stringify(result));
                     for dimension, native in enumerate((width, height)):
                         self.assertAlmostEqual(sample["stage"][dimension], native * scale, delta=.1)
                         self.assertAlmostEqual(sample["media"][dimension], native * scale, delta=.1)
+
+    @unittest.skipUnless(shutil.which("node"), "Node.js is needed to execute preview fitting")
+    def test_image_candidates_fit_natural_dimensions_unless_native_viewport_is_set(self):
+        template = builder.TEMPLATE.read_text(encoding="utf-8")
+        fit = template.split(" function fit(s){", 1)[1].split("\n const fitAll=", 1)[0]
+        program = r"""
+const SIZES={desktop:{w:1280,h:900},mobile:{w:390,h:844}},st={viewport:'desktop'};
+const byId={img:{kind:'image'}};
+const innerHeight=844,$=()=>({offsetHeight:100});
+const narrow=()=>true,getComputedStyle=()=>({paddingLeft:'12',paddingRight:'12',paddingTop:'16',paddingBottom:'16'});
+const m={style:{},naturalWidth:1600,naturalHeight:900,complete:true};
+const box={clientWidth:400,clientHeight:0,dataset:{zoom:'fit'},classList:{contains:()=>false}};
+const classes=new Set();
+const s={isConnected:true,dataset:{id:'img'},parentElement:box,querySelector:()=>m,style:{},classList:{add:c=>classes.add(c)}};
+""" + "function fit(s){" + fit + r"""
+const result=[];
+fit(s);result.push({...m.style,stage:{...s.style},ready:classes.has('ready')});
+st.viewport='mobile';fit(s);result.push({...m.style,stage:{...s.style}});
+byId.img.nativeViewport={width:1200,height:800};fit(s);result.push({...m.style,stage:{...s.style}});
+delete byId.img.nativeViewport;m.naturalWidth=0;m.naturalHeight=0;m.complete=false;
+fit(s);result.push({...m.style,stage:{...s.style}});
+m.naturalWidth=600;m.naturalHeight=1800;m.complete=true;box.classList.contains=()=>true;
+fit(s);result.push({...m.style,stage:{...s.style}});
+box.dataset.zoom='actual';fit(s);result.push({...m.style,stage:{...s.style}});
+console.log(JSON.stringify(result));
+"""
+        run = subprocess.run([shutil.which("node"), "-e", program], capture_output=True, text=True, timeout=10, encoding="utf-8")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        results = json.loads(run.stdout)
+        self.assertTrue(results[0]["ready"])
+        for result, (width, height, scale) in zip(results, [
+                (1600, 900, 400 / 1600), (1600, 900, 400 / 1600), (1200, 800, 400 / 1200),
+                (390, 844, 1), (600, 1800, 712 / 1800), (600, 1800, 1)]):
+            self.assertEqual(result["width"], f"{width}px")
+            self.assertEqual(result["height"], f"{height}px")
+            self.assertAlmostEqual(float(result["transform"][6:-1]), scale)
+            self.assertAlmostEqual(float(result["stage"]["width"][:-2]), width * scale)
+            self.assertAlmostEqual(float(result["stage"]["height"][:-2]), height * scale)
+
+    @unittest.skipUnless(shutil.which("node") and (shutil.which("google-chrome") or shutil.which("chromium") or
+                         Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome").is_file()),
+                         "Chrome/Chromium is needed for rendered image explorer checks")
+    def test_rendered_image_explorer_avoids_letterbox_badge_collision_and_title_clipping(self):
+        def make_png(width, height, rgb):
+            def chunk(tag, data):
+                return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+            raw = b"".join(b"\x00" + bytes(rgb) * width for _ in range(height))
+            return (b"\x89PNG\r\n\x1a\n"
+                    + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+                    + chunk(b"IDAT", zlib.compress(raw))
+                    + chunk(b"IEND", b""))
+
+        (self.folder / "wide.png").write_bytes(make_png(640, 360, (34, 62, 114)))
+        (self.folder / "classic.png").write_bytes(make_png(600, 400, (186, 152, 112)))
+        (self.folder / "wide2.png").write_bytes(make_png(800, 450, (24, 34, 58)))
+        titles = [
+            "方向 A · 厚棉纸无墨压印与钴蓝细线 (W41)",
+            "方向 B · 洞石柱廊与钴蓝晴空暗影 (W43)",
+            "方向 C · 午夜海军蓝与拉丝金箔马赛克 (W45)",
+        ]
+        self.data["candidates"] = [
+            {"id": "a", "name": titles[0], "kind": "image", "source": "wide.png", "palette": ["#f5f2eb", "#1d4ed8"]},
+            {"id": "b", "name": titles[1], "kind": "image", "source": "classic.png", "palette": ["#e8dfd1", "#1e3a8a"]},
+            {"id": "c", "name": titles[2], "kind": "image", "source": "wide2.png", "palette": ["#0f172a", "#d4af37"]},
+        ]
+        self.save()
+        builder.build(self.manifest, self.output)
+
+        chrome = (shutil.which("google-chrome") or shutil.which("chromium") or
+                  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+        runner = r"""
+import {spawn} from 'node:child_process';
+const chrome=spawn(process.argv[1],['--headless=new','--remote-debugging-pipe',
+ '--no-first-run','--no-default-browser-check','--disable-extensions',
+ '--force-prefers-reduced-motion',`--user-data-dir=${process.argv[2]}`,'about:blank'],
+ {stdio:['ignore','ignore','ignore','pipe','pipe']});
+let seq=0,buffer='';const pending=new Map();
+chrome.on('error',error=>{console.error(error);process.exitCode=1;});
+chrome.stdio[4].on('data',data=>{
+ buffer+=data.toString();let end;
+ while((end=buffer.indexOf('\0'))>=0){
+  const message=JSON.parse(buffer.slice(0,end));buffer=buffer.slice(end+1);
+  if(pending.has(message.id)){const {resolve,reject}=pending.get(message.id);pending.delete(message.id);
+   message.error?reject(Error(message.error.message)):resolve(message.result);}
+ }
+});
+const send=(method,params={},sessionId)=>new Promise((resolve,reject)=>{
+ const id=++seq;pending.set(id,{resolve,reject});
+ chrome.stdio[3].write(JSON.stringify({id,method,params,...(sessionId?{sessionId}:{})})+'\0');
+});
+const evalVal=async(sessionId,expression)=>{
+ const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true},sessionId);
+ if(r.exceptionDetails)throw Error(r.exceptionDetails.text||'eval failed');
+ return r.result.value;
+};
+const deadline=setTimeout(()=>{console.error('Image probe timed out');chrome.kill('SIGKILL');process.exitCode=1;},20000);
+try{
+ const {targetId}=await send('Target.createTarget',{url:'about:blank'});
+ const {sessionId}=await send('Target.attachToTarget',{targetId,flatten:true});
+ await send('Page.enable',{},sessionId);
+ await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false},sessionId);
+ await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]},sessionId);
+ await send('Page.navigate',{url:process.argv[3]},sessionId);
+ for(let i=0;i<100;i++){
+  const ready=await evalVal(sessionId,`(()=>{const imgs=[...document.querySelectorAll('.card .stage img')];return imgs.length===3&&imgs.every(m=>m.complete&&m.naturalWidth>0&&m.closest('.stage').classList.contains('ready'));})()`);
+  if(ready)break;
+  await new Promise(r=>setTimeout(r,50));
+ }
+ await evalVal(sessionId,'new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
+ const base=await evalVal(sessionId,`(()=>{
+  const vp=document.querySelector('[data-i18n-aria-label="viewportLabel"]');
+  const cards=[...document.querySelectorAll('.card')].map(card=>{
+   const frame=card.querySelector('.frame'),stage=card.querySelector('.stage'),img=stage.querySelector('img');
+   const name=card.querySelector('.cap .name'),peek=frame.querySelector('.peek'),badge=stage.querySelector('.static');
+   const sr=stage.getBoundingClientRect(),ir=img.getBoundingClientRect(),fr=frame.getBoundingClientRect();
+   return {id:card.dataset.id,viewport:frame.dataset.viewport,ready:stage.classList.contains('ready'),
+    stageBg:getComputedStyle(stage).backgroundColor,
+    stage:[sr.width,sr.height],img:[ir.width,ir.height],natural:[img.naturalWidth,img.naturalHeight],
+    frameCenter:[fr.left+fr.width/2,fr.top+fr.height/2],
+    titleAttr:name.title,nameText:name.textContent,whiteSpace:getComputedStyle(name).whiteSpace,
+    clipped:name.scrollHeight>name.clientHeight+1,
+    peekOpacity:getComputedStyle(peek).opacity,staticOpacity:getComputedStyle(badge).opacity};
+  });
+  return {viewportDisplay:getComputedStyle(vp).display,cards};
+ })()`);
+ const [hx,hy]=base.cards[0].frameCenter;
+ await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:hx,y:hy},sessionId);
+ await evalVal(sessionId,'new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
+ const hovered=await evalVal(sessionId,`(()=>{
+  const card=document.querySelectorAll('.card')[0];
+  return {peekOpacity:getComputedStyle(card.querySelector('.peek')).opacity,
+   staticOpacity:getComputedStyle(card.querySelector('.static')).opacity};
+ })()`);
+ await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:2,y:2},sessionId);
+ await evalVal(sessionId,`(()=>{document.querySelectorAll('.card .hit')[1].focus();return new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));})()`);
+ const focused=await evalVal(sessionId,`(()=>{
+  const card=document.querySelectorAll('.card')[1];
+  return {peekOpacity:getComputedStyle(card.querySelector('.peek')).opacity,
+   staticOpacity:getComputedStyle(card.querySelector('.static')).opacity};
+ })()`);
+ console.log(JSON.stringify({base,hovered,focused}));
+}catch(error){console.error(error);process.exitCode=1;}
+finally{clearTimeout(deadline);chrome.kill();}
+"""
+        run = subprocess.run([shutil.which("node"), "--input-type=module", "-e", runner, chrome,
+                              str(self.folder / "chrome-image-ux"), self.output.as_uri()],
+                             capture_output=True, text=True, timeout=30, encoding="utf-8")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        observed = json.loads(run.stdout)
+        self.assertEqual(observed["base"]["viewportDisplay"], "none")
+        for card, expected_title in zip(observed["base"]["cards"], titles):
+            with self.subTest(id=card["id"]):
+                self.assertTrue(card["ready"])
+                self.assertEqual(card["viewport"], "native")
+                self.assertEqual(card["stageBg"], "rgba(0, 0, 0, 0)")
+                sw, sh = card["stage"]
+                iw, ih = card["img"]
+                nw, nh = card["natural"]
+                self.assertAlmostEqual(sw, iw, delta=1.0)
+                self.assertAlmostEqual(sh, ih, delta=1.0)
+                self.assertAlmostEqual(sh, sw * (nh / nw), delta=1.0)
+                self.assertEqual(card["titleAttr"], expected_title)
+                self.assertEqual(card["nameText"], expected_title)
+                self.assertEqual(card["whiteSpace"], "normal")
+                self.assertFalse(card["clipped"])
+                self.assertEqual(card["peekOpacity"], "0")
+                self.assertEqual(card["staticOpacity"], "1")
+        self.assertEqual(observed["hovered"], {"peekOpacity": "1", "staticOpacity": "0"})
+        self.assertEqual(observed["focused"], {"peekOpacity": "1", "staticOpacity": "0"})
+
+        # Mixed html + image explorer keeps the viewport switcher visible for html cards.
+        self.data["candidates"].append({"id": "d", "name": "HTML 候选", "kind": "html", "source": "sample.html"})
+        self.save()
+        builder.build(self.manifest, self.output, force=True)
+        mixed_probe = """<script>(()=>{const o=document.createElement('pre');o.id='mixed-vp';o.textContent=getComputedStyle(document.querySelector('[data-i18n-aria-label="viewportLabel"]')).display;document.body.append(o);})();</script>"""
+        self.output.write_text(self.output.read_text(encoding="utf-8").replace("</body></html>", mixed_probe + "</body></html>"), encoding="utf-8")
+        mixed_run = self.run_browser_probe("mixed-vp", "chrome-mixed-vp")
+        self.assertEqual(mixed_run.returncode, 0, mixed_run.stderr)
+        self.assertNotEqual(mixed_run.stdout.strip(), "none")
 
     def test_interface_strings_are_complete_and_centralized(self):
         template = builder.TEMPLATE.read_text(encoding="utf-8")
