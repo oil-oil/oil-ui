@@ -1,8 +1,8 @@
 English · [中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](https://ui.oiloil.org/ko/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=lang-bar) · [Deutsch](https://ui.oiloil.org/de/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=lang-bar) · [Español](https://ui.oiloil.org/es/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=lang-bar)
 
-[![GitHub Stars](https://img.shields.io/github/stars/oil-oil/oil-ui?style=flat-square&color=292e2b)](https://github.com/oil-oil/oil-ui/stargazers) [![skills.sh](https://img.shields.io/badge/skills.sh-4.6K%2B_installs-4a5d4e?style=flat-square)](https://www.skills.sh/oil-oil/oil-ui/oil-ui) [![Live Gallery](https://img.shields.io/badge/live_gallery-143_examples-3d5a45?style=flat-square)](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=hero-gallery) [![Blind Benchmark](https://img.shields.io/badge/blind_test-87.0%2F100_(15_runs)-5b533b?style=flat-square)](https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-benchmark) [![License: MIT](https://img.shields.io/badge/license-MIT-60675f?style=flat-square)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/oil-oil/oil-ui?style=flat-square&color=292e2b)](https://github.com/oil-oil/oil-ui/stargazers) [![skills.sh](https://img.shields.io/badge/skills.sh-4.6K%2B_installs-4a5d4e?style=flat-square)](https://www.skills.sh/oil-oil/oil-ui/oil-ui) [![Live Gallery](https://img.shields.io/badge/live_gallery-141_examples-3d5a45?style=flat-square)](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=hero-gallery) [![Blind Benchmark](https://img.shields.io/badge/blind_test-87.0%2F100_(15_runs)-5b533b?style=flat-square)](https://ui.oiloil.org/en/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=guide-benchmark) [![License: MIT](https://img.shields.io/badge/license-MIT-60675f?style=flat-square)](LICENSE)
 
-**Oil UI** is an interface & UI/UX design skill for AI coding agents. It recommends one clear visual direction and refines it against real-browser screenshots, or explores 3 genuinely distinct directions side by side when you ask to compare. Browse 143 live websites, apps, dashboards, and components at [ui.oiloil.org](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=intro-text).
+**Oil UI** is an interface & UI/UX design skill for AI coding agents. It recommends one clear visual direction and refines it against real-browser screenshots, or explores 3 genuinely distinct directions side by side when you ask to compare. Browse 141 live websites, apps, dashboards, and components at [ui.oiloil.org](https://ui.oiloil.org/en/?utm_source=github&utm_medium=referral&utm_campaign=readme-en&utm_content=intro-text).
 
 ```bash
 npx skills add oil-oil/oil-ui
@@ -11,7 +11,7 @@ npx skills add oil-oil/oil-ui
 **Compatible with:** Claude Code, Cursor, Codex, Windsurf, Cline, Antigravity, OpenCode, GitHub Copilot, Roo Code, DeepSeek Harness ([dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui)), Kimi Code, Trae, and any `SKILL.md`-compatible agent.
 
 <p align="center">
-  <img src="./assets/readme/hero.en.webp" width="100%" alt="oil-ui: push AI UI design to its limits. A person pins a yellow pushpin to the middle of three previews in different styles">
+  <img src="./assets/readme/hero.en.webp" width="100%" alt="Oil UI: push AI UI design to its limits. Compare directions, pick one, refine on real screenshots — paired with an impressionist Monet Giverny water-lily pond vignette on warm ivory parchment">
 </p>
 
 <p align="center">
