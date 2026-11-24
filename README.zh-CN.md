@@ -1,8 +1,8 @@
 [English](README.md) · 中文 · [日本語](README.ja.md) · [한국어](https://ui.oiloil.org/ko/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=lang-bar) · [Deutsch](https://ui.oiloil.org/de/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=lang-bar) · [Español](https://ui.oiloil.org/es/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=lang-bar)
 
-[![GitHub Stars](https://img.shields.io/github/stars/oil-oil/oil-ui?style=flat-square&color=292e2b)](https://github.com/oil-oil/oil-ui/stargazers) [![skills.sh](https://img.shields.io/badge/skills.sh-4.6K%2B_安装-4a5d4e?style=flat-square)](https://www.skills.sh/oil-oil/oil-ui/oil-ui) [![Live Gallery](https://img.shields.io/badge/在线画廊-143_件真实作品-3d5a45?style=flat-square)](https://ui.oiloil.org/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=hero-gallery) [![Blind Benchmark](https://img.shields.io/badge/15次盲测均分-87.0%2F100-5b533b?style=flat-square)](https://ui.oiloil.org/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=guide-benchmark) [![License: MIT](https://img.shields.io/badge/license-MIT-60675f?style=flat-square)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/oil-oil/oil-ui?style=flat-square&color=292e2b)](https://github.com/oil-oil/oil-ui/stargazers) [![skills.sh](https://img.shields.io/badge/skills.sh-4.6K%2B_安装-4a5d4e?style=flat-square)](https://www.skills.sh/oil-oil/oil-ui/oil-ui) [![Live Gallery](https://img.shields.io/badge/在线画廊-141_件真实作品-3d5a45?style=flat-square)](https://ui.oiloil.org/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=hero-gallery) [![Blind Benchmark](https://img.shields.io/badge/15次盲测均分-87.0%2F100-5b533b?style=flat-square)](https://ui.oiloil.org/guide/ui-design-skills-tested/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=guide-benchmark) [![License: MIT](https://img.shields.io/badge/license-MIT-60675f?style=flat-square)](LICENSE)
 
-**Oil UI** 是给 AI 编程 Agent 用的界面与 UI/UX 设计 Skill：默认推荐一个明确的设计方向并对照真实浏览器截图打磨；需要比较时，可并排生成 3 套构图、字体与配色真正拉开差距的方案。网站、App、后台和组件都能做，143 件在线作品见 [ui.oiloil.org](https://ui.oiloil.org/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=intro-text)。
+**Oil UI** 是给 AI 编程 Agent 用的界面与 UI/UX 设计 Skill：默认推荐一个明确的设计方向并对照真实浏览器截图打磨；需要比较时，可并排生成 3 套构图、字体与配色真正拉开差距的方案。网站、App、后台和组件都能做，141 件在线作品见 [ui.oiloil.org](https://ui.oiloil.org/?utm_source=github&utm_medium=referral&utm_campaign=readme-zh&utm_content=intro-text)。
 
 ```bash
 npx skills add oil-oil/oil-ui
@@ -11,7 +11,7 @@ npx skills add oil-oil/oil-ui
 **兼容宿主：** Claude Code, Cursor, Codex, Windsurf, Cline, Antigravity, OpenCode, GitHub Copilot, Roo Code, DeepSeek Harness（[dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui)）, Kimi Code, Trae 及任意支持 `SKILL.md` 的 Agent。
 
 <p align="center">
-  <img src="./assets/readme/hero.webp" width="100%" alt="oil-ui：把 AI 的 UI 设计能力推到极限。插画里的人把黄色图钉按在三张风格不同的小样中间那张上">
+  <img src="./assets/readme/hero.webp" width="100%" alt="Oil UI：把 AI 的 UI 设计能力，推到极限。几个方向并排对比，挑中后再照着真实画面打磨；右侧配以暖纸面上的莫奈吉维尼睡莲池印象派油画">
 </p>
 
 <p align="center">
