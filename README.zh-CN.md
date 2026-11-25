@@ -11,7 +11,7 @@ npx skills add oil-oil/oil-ui
 **兼容宿主：** Claude Code, Cursor, Codex, Windsurf, Cline, Antigravity, OpenCode, GitHub Copilot, Roo Code, DeepSeek Harness（[dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui)）, Kimi Code, Trae 及任意支持 `SKILL.md` 的 Agent。
 
 <p align="center">
-  <img src="./assets/readme/hero.webp" width="100%" alt="Oil UI：把 AI 的 UI 设计能力，推到极限。几个方向并排对比，挑中后再照着真实画面打磨；右侧配以暖纸面上的莫奈吉维尼睡莲池印象派油画">
+  <a href="https://ui.oiloil.org/?utm_source=github&utm_medium=readme-zh&utm_campaign=oil-ui-hero"><img src="./assets/readme/hero.webp" width="100%" alt="Oil UI：把 AI 的 UI 设计能力，推到极限。几个方向并排对比，挑中后再照着真实画面打磨；右侧配以暖纸面上的莫奈吉维尼睡莲池印象派油画"></a>
 </p>
 
 <p align="center">
@@ -124,6 +124,7 @@ Oil UI Pro 99 元，一次买断，永久更新（送 100 生图积分并免费�
 
 - [oil-motion](https://github.com/oil-oil/oil-motion)：用生成的视频或序列帧做随滚动、拖动变化的网页动画，比如产品拆解、镜头穿越。
 - [oil-tone](https://github.com/oil-oil/oil-tone)：把页面上的标题、说明和介绍改得自然、清楚、好读，中英文都能用。
+- [Oil Studio](https://studio.oiloil.org/?utm_source=github&utm_medium=readme-zh&utm_campaign=oil-ui)：Apple Silicon Mac 原生自动缩放录屏工具，做完界面后直接录制高质感产品演示视频，并支持离线 Whisper 按字剪画面。
 - [Oil Book 相关文章](https://book.oiloil.org/articles/ai-ui-design?utm_source=github&utm_medium=referral&utm_campaign=oil-ui-readme-zh)：想看平时怎么挑高审美模型、做多方向对比和微调界面细节，可以参考《如何使用 AI 做出有高级感的设计》和[《如何从 0 到 1 Vibe Coding 一个个人网站》](https://book.oiloil.org/articles/vibe-coding-website-from-scratch?utm_source=github&utm_medium=referral&utm_campaign=oil-ui-readme-zh)。
 
 ## 许可
