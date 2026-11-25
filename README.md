@@ -11,7 +11,7 @@ npx skills add oil-oil/oil-ui
 **Compatible with:** Claude Code, Cursor, Codex, Windsurf, Cline, Antigravity, OpenCode, GitHub Copilot, Roo Code, DeepSeek Harness ([dsh-oil-ui](https://github.com/oil-oil/dsh-oil-ui)), Kimi Code, Trae, and any `SKILL.md`-compatible agent.
 
 <p align="center">
-  <img src="./assets/readme/hero.en.webp" width="100%" alt="Oil UI: push AI UI design to its limits. Compare directions, pick one, refine on real screenshots — paired with an impressionist Monet Giverny water-lily pond vignette on warm ivory parchment">
+  <a href="https://ui.oiloil.org/en/?utm_source=github&utm_medium=readme&utm_campaign=oil-ui-hero"><img src="./assets/readme/hero.en.webp" width="100%" alt="Oil UI: push AI UI design to its limits. Compare directions, pick one, refine on real screenshots — paired with an impressionist Monet Giverny water-lily pond vignette on warm ivory parchment"></a>
 </p>
 
 <p align="center">
@@ -126,6 +126,7 @@ Each time it is used, the Skill checks for a newer version at most once every 10
 
 - [oil-motion](https://github.com/oil-oil/oil-motion): Turn generated videos or frame sequences into web animation controlled by scrolling or dragging, such as product teardowns or camera fly-throughs.
 - [oil-tone](https://github.com/oil-oil/oil-tone): Rewrites headings, descriptions, and intro copy so they read naturally and clearly in Chinese or English.
+- [Oil Studio](https://studio.oiloil.org/en/?utm_source=github&utm_medium=readme&utm_campaign=oil-ui): Native Apple Silicon Mac screen recorder for capturing auto-zoom product demo videos of your finished UI and cutting voice-overs by editing transcript text.
 
 ## License
 
